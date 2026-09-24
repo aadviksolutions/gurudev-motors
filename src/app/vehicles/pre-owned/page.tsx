@@ -31,20 +31,23 @@ export default function PreOwnedVehiclesPage() {
   }, []);
 
   return (
-    <div className="py-12 bg-gm-soft min-h-screen">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="py-8 sm:py-12 bg-gm-soft min-h-screen section-full w-full">
+      <div className="site-container">
         <Link href="/vehicles" className="inline-flex items-center gap-1.5 text-xs font-bold text-gm-muted hover:text-gm-navy mb-6">
           <ArrowLeft className="w-3.5 h-3.5" />
           <span>Back to All Vehicles</span>
         </Link>
 
         {/* Banner */}
-        <div className="bg-gradient-to-r from-gm-navy to-[#031330] rounded-3xl p-8 sm:p-12 text-white mb-12 border border-white/10 shadow-lg">
+        <div className="bg-gradient-to-r from-gm-navy to-[#031330] rounded-3xl p-6 sm:p-12 text-white mb-10 sm:mb-12 border border-white/10 shadow-lg">
           <div className="max-w-2xl">
             <span className="text-xs font-black uppercase tracking-widest text-amber-400 block mb-2">
               Certified Pre-Owned Assurance
             </span>
-            <h1 className="text-3xl sm:text-5xl font-black uppercase tracking-tight leading-tight mb-4">
+            <h1
+              className="font-black uppercase tracking-tight leading-[0.95] mb-4 break-words"
+              style={{ fontSize: 'clamp(1.85rem, 4vw, 3rem)' }}
+            >
               Second-Hand.<br />First-Class Care.
             </h1>
             <p className="text-xs sm:text-sm text-slate-300 leading-relaxed mb-6">

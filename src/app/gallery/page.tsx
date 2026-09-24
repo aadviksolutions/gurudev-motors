@@ -32,17 +32,20 @@ export default function GalleryPage() {
   });
 
   return (
-    <div className="py-12 bg-gm-soft min-h-screen">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center max-w-3xl mx-auto mb-12">
+    <div className="py-8 sm:py-12 bg-gm-soft min-h-screen section-full w-full">
+      <div className="site-container">
+        <div className="text-center max-w-3xl mx-auto mb-10 sm:mb-12">
           <span className="text-xs font-black uppercase tracking-widest text-gm-red block mb-2 flex items-center justify-center gap-1.5">
             <Camera className="w-4 h-4 text-gm-red" />
             Inside Gurudev Motors
           </span>
-          <h1 className="text-4xl sm:text-5xl font-black uppercase tracking-tight text-gm-navy">
+          <h1
+            className="font-black uppercase tracking-tight text-gm-navy break-words"
+            style={{ fontSize: 'clamp(1.85rem, 4vw, 3rem)' }}
+          >
             Photo Gallery
           </h1>
-          <p className="text-sm text-gm-muted mt-3">
+          <p className="text-sm text-gm-muted mt-3 max-w-xl mx-auto">
             Real photos from our Mahadev Ghat Chowk showroom, motorcycle pavilion, customer delivery moments, and modern service workshop.
           </p>
         </div>

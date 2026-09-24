@@ -12,7 +12,16 @@
   --line: #E3E8F0;
 }
 
-html {
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  margin: 0;
+  padding: 0;
   scroll-behavior: smooth;
 }
 
@@ -20,7 +29,39 @@ body {
   color: var(--ink);
   background-color: #ffffff;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Global Consistent Container System */
+.container,
+.site-container,
+.container-custom {
+  width: min(1280px, calc(100% - 40px));
+  margin-inline: auto;
+  box-sizing: border-box;
+}
+
+@media (max-width: 1024px) {
+  .container,
+  .site-container,
+  .container-custom {
+    width: calc(100% - 32px);
+  }
+}
+
+@media (max-width: 768px) {
+  .container,
+  .site-container,
+  .container-custom {
+    width: calc(100% - 24px);
+  }
+}
+
+/* Section constraint */
+.section-full {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 /* Custom scrollbars */

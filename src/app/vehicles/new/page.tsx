@@ -31,18 +31,21 @@ export default function NewVehiclesPage() {
   }, []);
 
   return (
-    <div className="py-12 bg-gm-soft min-h-screen">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="py-8 sm:py-12 bg-gm-soft min-h-screen section-full w-full">
+      <div className="site-container">
         <Link href="/vehicles" className="inline-flex items-center gap-1.5 text-xs font-bold text-gm-muted hover:text-gm-navy mb-6">
           <ArrowLeft className="w-3.5 h-3.5" />
           <span>Back to All Vehicles</span>
         </Link>
 
-        <div className="mb-10">
+        <div className="mb-8 sm:mb-10">
           <span className="text-xs font-black uppercase tracking-widest text-gm-red block mb-2">
             Brand New Showroom Models
           </span>
-          <h1 className="text-4xl sm:text-5xl font-black uppercase text-gm-navy tracking-tight">
+          <h1
+            className="font-black uppercase text-gm-navy tracking-tight break-words"
+            style={{ fontSize: 'clamp(1.85rem, 4vw, 3rem)' }}
+          >
             New Motorcycles & Scooters
           </h1>
           <p className="text-sm text-gm-muted mt-2 max-w-xl">

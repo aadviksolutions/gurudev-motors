@@ -6,17 +6,20 @@ import { CONTACT_INFO } from '@/lib/constants';
 
 export default function AboutPage() {
   return (
-    <div className="py-12 bg-white min-h-screen">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="py-8 sm:py-12 bg-white min-h-screen section-full w-full">
+      <div className="site-container">
         {/* Header */}
-        <div className="max-w-3xl mb-16">
+        <div className="max-w-3xl mb-10 sm:mb-16">
           <span className="text-xs font-black uppercase tracking-widest text-gm-red block mb-2">
             01 / Our Story & Heritage
           </span>
-          <h1 className="text-4xl sm:text-6xl font-black uppercase text-gm-navy tracking-tight leading-[0.9] mb-4">
+          <h1
+            className="font-black uppercase text-gm-navy tracking-tight leading-[0.92] mb-4 break-words"
+            style={{ fontSize: 'clamp(2rem, 5vw, 3.75rem)' }}
+          >
             Built Around<br />The Ride.
           </h1>
-          <p className="text-base text-gm-muted leading-relaxed">
+          <p className="text-sm sm:text-base text-gm-muted leading-relaxed">
             Gurudev Motors was founded with a singular mission: to simplify two-wheeler ownership in Raipur by providing honest guidance, multi-brand choices, transparent used vehicle certifications, and dependable workshop care under one roof.
           </p>
         </div>

@@ -31,22 +31,25 @@ export default function ElectricVehiclesPage() {
   }, []);
 
   return (
-    <div className="py-12 bg-gm-soft min-h-screen">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="py-8 sm:py-12 bg-gm-soft min-h-screen section-full w-full">
+      <div className="site-container">
         <Link href="/vehicles" className="inline-flex items-center gap-1.5 text-xs font-bold text-gm-muted hover:text-gm-navy mb-6">
           <ArrowLeft className="w-3.5 h-3.5" />
           <span>Back to All Vehicles</span>
         </Link>
 
         {/* EV Header Banner */}
-        <div className="bg-gradient-to-r from-[#021B1B] to-[#04332D] rounded-3xl p-8 sm:p-12 text-white mb-12 border border-emerald-500/20 shadow-lg relative overflow-hidden">
+        <div className="bg-gradient-to-r from-[#021B1B] to-[#04332D] rounded-3xl p-6 sm:p-12 text-white mb-10 sm:mb-12 border border-emerald-500/20 shadow-lg relative overflow-hidden">
           <div className="absolute -right-16 -bottom-16 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
           <div className="relative z-10 max-w-2xl">
             <span className="text-xs font-black uppercase tracking-widest text-emerald-400 block mb-2 flex items-center gap-1.5">
               <Zap className="w-4 h-4 text-emerald-400" />
               Green Mobility Zone • Kinetic Green
             </span>
-            <h1 className="text-3xl sm:text-5xl font-black uppercase tracking-tight leading-tight mb-4">
+            <h1
+              className="font-black uppercase tracking-tight leading-[0.95] mb-4 break-words"
+              style={{ fontSize: 'clamp(1.85rem, 4vw, 3rem)' }}
+            >
               Quiet Power.<br />Zero Fuel Bills.
             </h1>
             <p className="text-xs sm:text-sm text-emerald-100/80 leading-relaxed mb-6">

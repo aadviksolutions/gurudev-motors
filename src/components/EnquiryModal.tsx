@@ -74,8 +74,8 @@ export default function EnquiryModal({ isOpen, onClose, defaultVehicle = '' }: E
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gm-navy-darker/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden border border-gm-line">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-gm-navy-darker/80 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden border border-gm-line max-h-[92vh] flex flex-col">
         {/* Header */}
         <div className="px-6 pt-6 pb-4 bg-gradient-to-r from-gm-navy to-gm-navy-dark text-white flex items-start justify-between">
           <div>
@@ -99,7 +99,7 @@ export default function EnquiryModal({ isOpen, onClose, defaultVehicle = '' }: E
         </div>
 
         {/* Content */}
-        <div className="p-6">
+        <div className="p-5 sm:p-6 overflow-y-auto flex-1">
           {submitted ? (
             <div className="text-center py-8">
               <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">

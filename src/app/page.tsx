@@ -23,6 +23,7 @@ import VehicleCard, { VehicleData } from '@/components/VehicleCard';
 import TestDriveModal from '@/components/TestDriveModal';
 import { CONTACT_INFO } from '@/lib/constants';
 import { useModal } from '@/context/ModalContext';
+import ContactDirectForm from '@/components/ContactDirectForm';
 
 export default function HomePage() {
   const { openEnquiry } = useModal();
@@ -62,14 +63,17 @@ export default function HomePage() {
       <QuickStats />
 
       {/* SECTION 01: About Gurudev Motors */}
-      <section className="py-24 sm:py-32 bg-white" id="about">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-16">
+      <section className="py-16 sm:py-24 lg:py-32 bg-white section-full w-full" id="about">
+        <div className="site-container">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12 sm:mb-16">
             <div>
               <div className="text-xs font-black uppercase tracking-widest text-gm-red mb-2">
                 01 / Who We Are
               </div>
-              <h2 className="text-4xl sm:text-6xl font-black uppercase tracking-tight text-gm-navy leading-[0.9]">
+              <h2
+                className="font-black uppercase tracking-tight text-gm-navy leading-[0.92] break-words"
+                style={{ fontSize: 'clamp(2rem, 5vw, 3.75rem)' }}
+              >
                 Built around<br />the ride.
               </h2>
             </div>
@@ -192,14 +196,17 @@ export default function HomePage() {
       </section>
 
       {/* SECTION 02: Dynamic Vehicle Showcase */}
-      <section className="py-24 sm:py-32 bg-gm-soft border-y border-gm-line" id="vehicles">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+      <section className="py-16 sm:py-24 lg:py-32 bg-gm-soft border-y border-gm-line section-full w-full" id="vehicles">
+        <div className="site-container">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10 sm:mb-12">
             <div>
               <div className="text-xs font-black uppercase tracking-widest text-gm-red mb-2">
                 02 / Vehicle Range
               </div>
-              <h2 className="text-4xl sm:text-6xl font-black uppercase tracking-tight text-gm-navy leading-[0.9]">
+              <h2
+                className="font-black uppercase tracking-tight text-gm-navy leading-[0.92] break-words"
+                style={{ fontSize: 'clamp(2rem, 5vw, 3.75rem)' }}
+              >
                 Find your<br />next ride.
               </h2>
             </div>
@@ -291,14 +298,17 @@ export default function HomePage() {
       </section>
 
       {/* SECTION 03: Pre-Owned & Exchange Split Cards */}
-      <section className="py-24 sm:py-32 bg-white" id="used">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-16">
+      <section className="py-16 sm:py-24 lg:py-32 bg-white section-full w-full" id="used">
+        <div className="site-container">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12 sm:mb-16">
             <div>
               <div className="text-xs font-black uppercase tracking-widest text-gm-red mb-2">
                 03 / Pre-Owned & Exchange
               </div>
-              <h2 className="text-4xl sm:text-6xl font-black uppercase tracking-tight text-gm-navy leading-[0.9]">
+              <h2
+                className="font-black uppercase tracking-tight text-gm-navy leading-[0.92] break-words"
+                style={{ fontSize: 'clamp(2rem, 5vw, 3.75rem)' }}
+              >
                 Second-hand.<br />First-class attention.
               </h2>
             </div>
@@ -384,18 +394,21 @@ export default function HomePage() {
       </section>
 
       {/* SECTION 04: Electric Mobility Banner */}
-      <section className="py-20 bg-gm-navy text-white relative overflow-hidden" id="electric">
+      <section className="py-16 sm:py-20 lg:py-24 bg-gm-navy text-white relative overflow-hidden section-full w-full" id="electric">
         <div
-          className="absolute inset-0 opacity-25 bg-cover bg-center"
+          className="absolute inset-0 opacity-25 bg-cover bg-center pointer-events-none"
           style={{ backgroundImage: `url('/images/hero.jpeg')` }}
         />
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="relative z-10 site-container">
           <div className="max-w-2xl">
             <div className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest text-emerald-400 mb-3">
               <Zap className="w-4 h-4" />
               04 / Electric Mobility
             </div>
-            <h2 className="text-4xl sm:text-6xl font-black uppercase tracking-tight leading-[0.9] mb-4">
+            <h2
+              className="font-black uppercase tracking-tight leading-[0.92] mb-4 break-words"
+              style={{ fontSize: 'clamp(2rem, 5vw, 3.75rem)' }}
+            >
               Quiet power.<br />
               <span className="text-emerald-400">Everyday freedom.</span>
             </h2>
@@ -422,14 +435,17 @@ export default function HomePage() {
       </section>
 
       {/* SECTION 05: Workshop & Service Centre */}
-      <section className="py-24 sm:py-32 bg-white" id="service">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-16">
+      <section className="py-16 sm:py-24 lg:py-32 bg-white section-full w-full" id="service">
+        <div className="site-container">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12 sm:mb-16">
             <div>
               <div className="text-xs font-black uppercase tracking-widest text-gm-red mb-2">
                 05 / Workshop Care
               </div>
-              <h2 className="text-4xl sm:text-6xl font-black uppercase tracking-tight text-gm-navy leading-[0.9]">
+              <h2
+                className="font-black uppercase tracking-tight text-gm-navy leading-[0.92] break-words"
+                style={{ fontSize: 'clamp(2rem, 5vw, 3.75rem)' }}
+              >
                 Service that<br />keeps you moving.
               </h2>
             </div>
@@ -529,14 +545,17 @@ export default function HomePage() {
       </section>
 
       {/* SECTION 06: Inside Gurudev Motors Gallery */}
-      <section className="py-24 sm:py-32 bg-gm-soft border-t border-gm-line" id="gallery">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-16">
+      <section className="py-16 sm:py-24 lg:py-32 bg-gm-soft border-t border-gm-line section-full w-full" id="gallery">
+        <div className="site-container">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12 sm:mb-16">
             <div>
               <div className="text-xs font-black uppercase tracking-widest text-gm-red mb-2">
                 06 / Inside Gurudev Motors
               </div>
-              <h2 className="text-4xl sm:text-6xl font-black uppercase tracking-tight text-gm-navy leading-[0.9]">
+              <h2
+                className="font-black uppercase tracking-tight text-gm-navy leading-[0.92] break-words"
+                style={{ fontSize: 'clamp(2rem, 5vw, 3.75rem)' }}
+              >
                 Real place.<br />Real people.
               </h2>
             </div>
@@ -621,87 +640,85 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* SECTION 07: Visit Or Enquire CTA Box */}
-      <section className="py-24 bg-gm-navy text-white" id="contact">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 rounded-3xl border border-white/20 overflow-hidden bg-[#031330]">
-            <div className="lg:col-span-7 p-8 sm:p-14 flex flex-col justify-between">
+      {/* SECTION 07: Contact & Direct Message */}
+      <section className="py-16 sm:py-20 lg:py-24 bg-gm-navy text-white section-full w-full" id="contact">
+        <div className="site-container">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-14 items-start">
+            {/* LEFT COLUMN: GURUDEV MOTORS SHOWROOM IN RAIPUR */}
+            <div className="space-y-6">
               <div>
-                <span className="text-xs font-black uppercase tracking-widest text-gm-red block mb-3">
-                  07 / Visit Or Enquire
+                <span className="text-xs font-black uppercase tracking-widest text-gm-red block mb-2">
+                  GURUDEV MOTORS
                 </span>
-                <h2 className="text-4xl sm:text-6xl font-black uppercase tracking-tight leading-[0.9] text-white mb-6">
-                  Let&apos;s find<br />your next ride.
+                <h2
+                  className="font-black uppercase tracking-tight text-white leading-[0.92] mb-4 break-words"
+                  style={{ fontSize: 'clamp(2rem, 4.5vw, 3.5rem)' }}
+                >
+                  SHOWROOM IN<br />
+                  <span className="text-gm-red">RAIPUR</span>
                 </h2>
-                <p className="text-sm sm:text-base text-slate-300 leading-relaxed max-w-lg mb-8">
-                  Call, WhatsApp or visit our showroom. For current stock, pricing, and finance availability, enquire directly with Gurudev Motors.
+                <p className="text-sm sm:text-base text-slate-300 leading-relaxed max-w-lg">
+                  Visit Raipur&apos;s trusted multi-brand dealership for new motorcycles, scooters, electric mobility, verified pre-owned vehicles, transparent exchange valuation, and authorized workshop care.
                 </p>
               </div>
 
-              <div className="flex flex-wrap items-center gap-4">
-                <a
-                  href={`tel:${CONTACT_INFO.phoneRaw}`}
-                  className="bg-white hover:bg-gm-soft text-gm-navy font-black text-xs px-7 py-3.5 rounded-xl transition-all shadow"
-                >
-                  Call Gurudev Motors
-                </a>
-                <a
-                  href={`https://wa.me/${CONTACT_INFO.whatsapp}?text=${encodeURIComponent('Hello Gurudev Motors, I want to enquire about a vehicle.')}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="bg-gm-red hover:bg-gm-red-dark text-white font-black text-xs px-7 py-3.5 rounded-xl transition-all shadow"
-                >
-                  WhatsApp ↗
-                </a>
-                <button
-                  onClick={() => openEnquiry()}
-                  className="border border-white/30 hover:border-white text-white font-bold text-xs px-6 py-3.5 rounded-xl transition-all"
-                >
-                  Online Enquiry Form
-                </button>
+              {/* Showroom & Service Address Details */}
+              <div className="p-5 sm:p-6 rounded-2xl bg-white/[0.05] border border-white/10 space-y-4">
+                <div className="flex items-start gap-3">
+                  <MapPin className="w-5 h-5 text-gm-red shrink-0 mt-0.5" />
+                  <div>
+                    <b className="text-xs sm:text-sm font-bold text-white block">Main Showroom</b>
+                    <p className="text-xs text-slate-300 leading-relaxed mt-0.5">
+                      {CONTACT_INFO.showroomAddress}
+                    </p>
+                    <span className="text-[11px] text-slate-400 mt-1 block">Hours: {CONTACT_INFO.timings}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3 pt-3 border-t border-white/10">
+                  <Wrench className="w-5 h-5 text-gm-red shrink-0 mt-0.5" />
+                  <div>
+                    <b className="text-xs sm:text-sm font-bold text-white block">Service Centre & Workshop</b>
+                    <p className="text-xs text-slate-300 leading-relaxed mt-0.5">
+                      {CONTACT_INFO.serviceCenterAddress}
+                    </p>
+                    <span className="text-[11px] text-slate-400 mt-1 block">Hours: {CONTACT_INFO.serviceTimings}</span>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-4 pt-3 border-t border-white/10 text-xs">
+                  <div className="flex items-center gap-1.5">
+                    <Phone className="w-4 h-4 text-gm-red shrink-0" />
+                    <span className="text-slate-300">Call:</span>
+                    <a href={`tel:${CONTACT_INFO.phoneRaw}`} className="font-bold text-white hover:text-gm-red">
+                      {CONTACT_INFO.phone}
+                    </a>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-slate-300">WhatsApp:</span>
+                    <a
+                      href={`https://wa.me/${CONTACT_INFO.whatsapp}?text=${encodeURIComponent('Hello Gurudev Motors, I want to enquire about showroom stock.')}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-bold text-emerald-400 hover:underline"
+                    >
+                      +91 93006 70006
+                    </a>
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div className="lg:col-span-5 p-8 sm:p-14 bg-white/[0.04] border-t lg:border-t-0 lg:border-l border-white/10 flex flex-col justify-center gap-6">
-              <div className="flex items-start gap-4">
-                <span className="text-xs font-black text-gm-red mt-0.5">01</span>
-                <div>
-                  <b className="text-sm font-bold text-white block mb-0.5">Showroom</b>
-                  <span className="text-xs text-slate-300 leading-relaxed block">
-                    {CONTACT_INFO.showroomAddress}
-                  </span>
-                </div>
-              </div>
+            {/* RIGHT COLUMN: Send A Direct Message Form */}
+            <div className="bg-white rounded-3xl p-6 sm:p-8 text-gm-ink shadow-2xl">
+              <h3 className="text-xl sm:text-2xl font-black text-gm-navy mb-1">
+                Send A Direct Message
+              </h3>
+              <p className="text-xs text-gm-muted mb-6">
+                Fill in your details below and our showroom team will connect with you promptly.
+              </p>
 
-              <div className="flex items-start gap-4">
-                <span className="text-xs font-black text-gm-red mt-0.5">02</span>
-                <div>
-                  <b className="text-sm font-bold text-white block mb-0.5">Direct Line</b>
-                  <a href={`tel:${CONTACT_INFO.phoneRaw}`} className="text-xs text-gm-red font-bold hover:underline block">
-                    {CONTACT_INFO.phone}
-                  </a>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-4">
-                <span className="text-xs font-black text-gm-red mt-0.5">03</span>
-                <div>
-                  <b className="text-sm font-bold text-white block mb-0.5">Vehicle Offerings</b>
-                  <span className="text-xs text-slate-300 block">
-                    New • Pre-Owned • Electric Mobility • Exchange
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-4">
-                <span className="text-xs font-black text-gm-red mt-0.5">04</span>
-                <div>
-                  <b className="text-sm font-bold text-white block mb-0.5">New Service Centre</b>
-                  <span className="text-xs text-slate-300 leading-relaxed block">
-                    {CONTACT_INFO.serviceCenterAddress}
-                  </span>
-                </div>
-              </div>
+              <ContactDirectForm />
             </div>
           </div>
         </div>

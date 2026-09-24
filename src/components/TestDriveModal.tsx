@@ -58,8 +58,8 @@ export default function TestDriveModal({ isOpen, onClose, vehicle }: TestDriveMo
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gm-navy-darker/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden border border-gm-line">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-gm-navy-darker/80 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden border border-gm-line max-h-[92vh] flex flex-col">
         <div className="px-6 pt-6 pb-4 bg-gm-navy text-white flex items-start justify-between">
           <div>
             <span className="text-[10px] font-black uppercase tracking-widest text-gm-red block mb-1">
@@ -77,7 +77,7 @@ export default function TestDriveModal({ isOpen, onClose, vehicle }: TestDriveMo
           </button>
         </div>
 
-        <div className="p-6">
+        <div className="p-5 sm:p-6 overflow-y-auto flex-1">
           {submitted ? (
             <div className="text-center py-6">
               <div className="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-3">
