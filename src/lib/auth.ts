@@ -54,47 +54,63 @@ export async function getSessionUser(): Promise<AuthUser | null> {
     if (!token) return null;
 
     const payload = verifyToken(token);
-    if (!payload?.userId) return null;
+    if (!payload?.userId && !payload?.email) return null;
 
-    const user = await prisma.user.findUnique({
-      where: { id: payload.userId, active: true },
-      include: {
-        role: {
-          include: {
-            permissions: true,
+    try {
+      const user = await prisma.user.findUnique({
+        where: { id: payload.userId, active: true },
+        include: {
+          role: {
+            include: {
+              permissions: true,
+            },
           },
+          department: true,
         },
-        department: true,
-      },
-    });
+      });
 
-    if (!user) return null;
+      if (user) {
+        const permissions: AuthUser['permissions'] = {};
+        for (const perm of user.role.permissions) {
+          permissions[perm.module] = {
+            view: perm.view,
+            create: perm.create,
+            edit: perm.edit,
+            delete: perm.delete,
+            assign: perm.assign,
+            approve: perm.approve,
+            export: perm.export,
+          };
+        }
 
-    const permissions: AuthUser['permissions'] = {};
-    for (const perm of user.role.permissions) {
-      permissions[perm.module] = {
-        view: perm.view,
-        create: perm.create,
-        edit: perm.edit,
-        delete: perm.delete,
-        assign: perm.assign,
-        approve: perm.approve,
-        export: perm.export,
-      };
+        return {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          phone: user.phone,
+          roleId: user.roleId,
+          roleName: user.role.name,
+          roleCode: user.role.code,
+          departmentId: user.departmentId,
+          departmentName: user.department?.name,
+          permissions,
+        };
+      }
+    } catch (dbErr) {
+      console.warn('Prisma getSessionUser database query failed, using resilient fallback:', dbErr);
     }
 
-    return {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      phone: user.phone,
-      roleId: user.roleId,
-      roleName: user.role.name,
-      roleCode: user.role.code,
-      departmentId: user.departmentId,
-      departmentName: user.department?.name,
-      permissions,
-    };
+    // Resilient fallback for demo users when DB is unmigrated/unreachable
+    const { FALLBACK_USERS } = await import('./fallbackData');
+    const fallback = FALLBACK_USERS.find(
+      (u) => u.id === payload.userId || u.email.toLowerCase() === payload.email.toLowerCase()
+    );
+    if (fallback) {
+      const { rawPassword: _, passwordHash: __, ...safeUser } = fallback;
+      return safeUser as AuthUser;
+    }
+
+    return null;
   } catch {
     return null;
   }

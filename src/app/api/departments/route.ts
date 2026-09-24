@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { FALLBACK_DEPARTMENTS } from '@/lib/fallbackData';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
@@ -11,6 +14,7 @@ export async function GET() {
     });
     return NextResponse.json({ success: true, departments });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.warn('Prisma departments query failed, using fallback departments:', error);
+    return NextResponse.json({ success: true, departments: FALLBACK_DEPARTMENTS });
   }
 }

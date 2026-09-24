@@ -244,12 +244,34 @@ async function main() {
     },
   });
 
+  const serviceAdvisorManoj = await prisma.user.create({
+    data: {
+      name: 'Manoj Kumar (Service Advisor)',
+      email: 'manoj.service@gurudevmotors.com',
+      passwordHash: passwordHashService,
+      phone: '+919826100006',
+      roleId: roleServiceExec.id,
+      departmentId: deptService.id,
+    },
+  });
+
+  const serviceAdvisorRakesh = await prisma.user.create({
+    data: {
+      name: 'Rakesh Patel (Service Advisor)',
+      email: 'rakesh.service@gurudevmotors.com',
+      passwordHash: passwordHashService,
+      phone: '+919826100007',
+      roleId: roleServiceExec.id,
+      departmentId: deptService.id,
+    },
+  });
+
   const serviceExec1 = await prisma.user.create({
     data: {
       name: 'Amit Kumar (Service Advisor)',
       email: 'amit.service@gurudevmotors.com',
       passwordHash: passwordHashService,
-      phone: '+919826100006',
+      phone: '+919826100008',
       roleId: roleServiceExec.id,
       departmentId: deptService.id,
     },
@@ -260,13 +282,13 @@ async function main() {
       name: 'Vikas Nishad (Floor Supervisor)',
       email: 'vikas.service@gurudevmotors.com',
       passwordHash: passwordHashService,
-      phone: '+919826100007',
+      phone: '+919826100009',
       roleId: roleServiceExec.id,
       departmentId: deptService.id,
     },
   });
 
-  console.log('Created 8 staff members across 4 departments.');
+  console.log('Created staff members across 4 departments.');
 
   // 6. Create Vehicles
   const vehiclesData = [

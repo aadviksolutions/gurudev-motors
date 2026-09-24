@@ -19,6 +19,7 @@ export default function AdminLoginPage() {
     { label: 'Sales Executive', email: 'rahul.sales@gurudevmotors.com', pass: 'Sales@123', role: 'Assigned Leads' },
     { label: 'Accounts User', email: 'accounts@gurudevmotors.com', pass: 'Accounts@123', role: 'Billing & GST' },
     { label: 'Service Manager', email: 'service.manager@gurudevmotors.com', pass: 'Service@123', role: 'Workshop & Jobs' },
+    { label: 'Service Advisor', email: 'manoj.service@gurudevmotors.com', pass: 'Service@123', role: 'Job Cards & Floor' },
   ];
 
   const handleLogin = async (e: React.FormEvent) => {
