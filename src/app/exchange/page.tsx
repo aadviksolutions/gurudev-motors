@@ -1,12 +1,16 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import { RefreshCw, CheckCircle2, ArrowRight, Sparkles, Phone, MessageSquare } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import { RefreshCw, CheckCircle2, ArrowRight, Sparkles, Phone, MessageSquare, AlertCircle, Clock } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { CONTACT_INFO, VEHICLE_BRANDS } from '@/lib/constants';
 
-export default function ExchangePage() {
+function ExchangePageContent() {
+  const searchParams = useSearchParams();
+  const upgradeParam = searchParams.get('upgrade');
+
   const [oldBrand, setOldBrand] = useState('Hero');
   const [oldModel, setOldModel] = useState('Splendor Plus');
   const [year, setYear] = useState('2020');
@@ -15,8 +19,17 @@ export default function ExchangePage() {
   const [targetVehicle, setTargetVehicle] = useState('Honda Activa 6G');
   const [customerName, setCustomerName] = useState('');
   const [mobile, setMobile] = useState('');
+  const [email, setEmail] = useState('');
+  const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
+  const [submittedData, setSubmittedData] = useState<any | null>(null);
+  const [errorMsg, setErrorMsg] = useState('');
+
+  useEffect(() => {
+    if (upgradeParam) {
+      setTargetVehicle(upgradeParam);
+    }
+  }, [upgradeParam]);
 
   // Dynamic Valuation Formula
   const calculateEstimatedValue = () => {
@@ -27,7 +40,7 @@ export default function ExchangePage() {
     const kmFactor = Number(km) > 40000 ? 0.85 : Number(km) > 20000 ? 0.95 : 1.05;
     const condFactor = condition === 'EXCELLENT' ? 1.15 : condition === 'GOOD' ? 1.0 : 0.85;
 
-    const estimated = Math.round(baseValue * depreciationFactor * kmFactor * condFactor / 500) * 500;
+    const estimated = Math.round((baseValue * depreciationFactor * kmFactor * condFactor) / 500) * 500;
     return {
       min: Math.max(15000, estimated - 3000),
       max: Math.max(20000, estimated + 3000),
@@ -38,32 +51,60 @@ export default function ExchangePage() {
 
   const handleExchangeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!customerName || !mobile) return;
+    setErrorMsg('');
+
+    if (!customerName.trim()) {
+      setErrorMsg('Please enter your full name');
+      return;
+    }
+
+    const cleanMobile = mobile.replace(/[^0-9]/g, '');
+    if (cleanMobile.length !== 10) {
+      setErrorMsg('Please enter a valid 10-digit Indian mobile number');
+      return;
+    }
 
     setSubmitting(true);
     try {
-      const notes = `Exchange Valuation Request: ${year} ${oldBrand} ${oldModel} (${km} km, ${condition} condition). Looking to upgrade to ${targetVehicle}. Estimated quote: ${formatCurrency(estimatedRange.min)} - ${formatCurrency(estimatedRange.max)}`;
-      await fetch('/api/leads', {
+      const res = await fetch('/api/exchange', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          customerName,
-          mobile,
-          vehicleModel: targetVehicle,
-          budget: `Exchange old ${oldBrand} ${oldModel}`,
-          source: 'WEBSITE',
-          notes,
+          customerName: customerName.trim(),
+          mobile: cleanMobile,
+          email: email.trim() || undefined,
+          currentBrand: oldBrand,
+          currentModel: oldModel,
+          registrationYear: year,
+          kmDriven: km,
+          condition,
+          upgradingVehicle: targetVehicle,
+          message: message.trim() || undefined,
+          estimatedValuation: (estimatedRange.min + estimatedRange.max) / 2,
         }),
       });
 
-      setSubmitted(true);
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to submit exchange request');
+      }
 
-      const text = `Hello Gurudev Motors, I want to exchange my old ${year} ${oldBrand} ${oldModel} (${km} km) for a new ${targetVehicle}. My mobile is ${mobile}. Please confirm exchange valuation.`;
+      setSubmittedData({
+        exchangeNumber: data.exchangeNumber,
+        customerName,
+        mobile: cleanMobile,
+        targetVehicle,
+        oldVehicle: `${year} ${oldBrand} ${oldModel}`,
+        estimatedRange,
+      });
+
+      const text = `Hello Gurudev Motors, I have submitted Exchange Request ${data.exchangeNumber} for my old ${year} ${oldBrand} ${oldModel} (${km} km) upgrading to ${targetVehicle}. My mobile is ${cleanMobile}. Please confirm inspection.`;
       setTimeout(() => {
         window.open(`https://wa.me/${CONTACT_INFO.whatsapp}?text=${encodeURIComponent(text)}`, '_blank');
-      }, 400);
-    } catch (err) {
-      console.error(err);
+      }, 500);
+    } catch (err: any) {
+      console.error('Exchange submission error:', err);
+      setErrorMsg(err.message || 'Something went wrong. Please check your network and try again.');
     } finally {
       setSubmitting(false);
     }
@@ -91,126 +132,235 @@ export default function ExchangePage() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           {/* Form */}
           <div className="lg:col-span-7 bg-white rounded-3xl p-6 sm:p-10 border border-gm-line shadow-sm">
-            <h3 className="text-xl font-black text-gm-navy mb-6">
-              1. Enter Your Old Vehicle Details
-            </h3>
-
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-gm-navy mb-1.5">Current Brand</label>
-                  <select
-                    value={oldBrand}
-                    onChange={(e) => setOldBrand(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl border border-gm-line text-sm focus:outline-none focus:border-gm-navy bg-white"
-                  >
-                    {VEHICLE_BRANDS.map((b) => (
-                      <option key={b} value={b}>{b}</option>
-                    ))}
-                  </select>
+            {submittedData ? (
+              <div className="space-y-6">
+                <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
+                  <CheckCircle2 className="w-10 h-10" />
                 </div>
-                <div>
-                  <label className="block text-xs font-bold text-gm-navy mb-1.5">Model Name</label>
-                  <input
-                    type="text"
-                    value={oldModel}
-                    onChange={(e) => setOldModel(e.target.value)}
-                    placeholder="e.g. Splendor, Activa, Pulsar"
-                    className="w-full px-4 py-3 rounded-xl border border-gm-line text-sm focus:outline-none focus:border-gm-navy"
-                  />
+                <div className="text-center">
+                  <span className="text-[11px] font-black uppercase tracking-widest text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200 inline-block mb-2">
+                    Request ID: {submittedData.exchangeNumber}
+                  </span>
+                  <h3 className="text-2xl font-black text-gm-navy tracking-tight">
+                    Exchange Request Registered!
+                  </h3>
+                  <p className="text-xs text-gm-muted mt-1 max-w-md mx-auto leading-relaxed">
+                    Thank you, {submittedData.customerName}. Your exchange request has been saved in our dealership system. Our vehicle evaluator will inspect your vehicle and provide the guaranteed trade-in amount.
+                  </p>
                 </div>
-              </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-gm-navy mb-1.5">Registration Year</label>
-                  <select
-                    value={year}
-                    onChange={(e) => setYear(e.target.value)}
-                    className="w-full px-3 py-3 rounded-xl border border-gm-line text-sm focus:outline-none focus:border-gm-navy bg-white"
-                  >
-                    {[2024, 2023, 2022, 2021, 2020, 2019, 2018, 2017, 2016, 2015, 2014].map((y) => (
-                      <option key={y} value={y}>{y}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gm-navy mb-1.5">Kilometers Driven</label>
-                  <input
-                    type="number"
-                    value={km}
-                    onChange={(e) => setKm(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl border border-gm-line text-sm focus:outline-none focus:border-gm-navy"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gm-navy mb-1.5">Vehicle Condition</label>
-                  <select
-                    value={condition}
-                    onChange={(e) => setCondition(e.target.value)}
-                    className="w-full px-3 py-3 rounded-xl border border-gm-line text-sm focus:outline-none focus:border-gm-navy bg-white"
-                  >
-                    <option value="EXCELLENT">Excellent (Like New)</option>
-                    <option value="GOOD">Good (Minor wear)</option>
-                    <option value="FAIR">Fair (Needs work)</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="pt-2">
-                <label className="block text-xs font-bold text-gm-navy mb-1.5">Upgrading To (New Model)</label>
-                <input
-                  type="text"
-                  value={targetVehicle}
-                  onChange={(e) => setTargetVehicle(e.target.value)}
-                  placeholder="e.g. Hero Splendor XTEC, Activa 6G, Kinetic Zulu"
-                  className="w-full px-4 py-3 rounded-xl border border-gm-line text-sm focus:outline-none focus:border-gm-navy"
-                />
-              </div>
-
-              <hr className="my-6 border-gm-line" />
-
-              <h4 className="text-sm font-black text-gm-navy mb-3">
-                2. Contact Details for Valuation Certificate
-              </h4>
-
-              {submitted ? (
-                <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-800 text-xs flex items-center gap-3">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-                  <span>Your exchange valuation request has been logged! Opening WhatsApp with our showroom team...</span>
-                </div>
-              ) : (
-                <form onSubmit={handleExchangeSubmit} className="space-y-3">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <input
-                      type="text"
-                      value={customerName}
-                      onChange={(e) => setCustomerName(e.target.value)}
-                      placeholder="Your Name *"
-                      className="px-4 py-3 rounded-xl border border-gm-line text-sm focus:outline-none focus:border-gm-navy"
-                      required
-                    />
-                    <input
-                      type="tel"
-                      value={mobile}
-                      onChange={(e) => setMobile(e.target.value)}
-                      placeholder="Mobile Number *"
-                      className="px-4 py-3 rounded-xl border border-gm-line text-sm focus:outline-none focus:border-gm-navy"
-                      required
-                    />
+                <div className="p-5 rounded-2xl bg-gm-soft border border-gm-line space-y-2 text-xs">
+                  <div className="flex justify-between py-1 border-b border-gm-line">
+                    <span className="text-gm-muted">Existing Vehicle:</span>
+                    <b className="text-gm-navy">{submittedData.oldVehicle}</b>
                   </div>
+                  <div className="flex justify-between py-1 border-b border-gm-line">
+                    <span className="text-gm-muted">Upgrading Vehicle:</span>
+                    <b className="text-gm-navy">{submittedData.targetVehicle}</b>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-gm-line">
+                    <span className="text-gm-muted">Estimated Valuation:</span>
+                    <b className="text-emerald-700 font-black">
+                      {formatCurrency(submittedData.estimatedRange.min)} - {formatCurrency(submittedData.estimatedRange.max)}
+                    </b>
+                  </div>
+                  <div className="flex justify-between py-1">
+                    <span className="text-gm-muted">Registered Mobile:</span>
+                    <b className="text-gm-navy">{submittedData.mobile}</b>
+                  </div>
+                </div>
 
-                  <button
-                    type="submit"
-                    disabled={submitting}
-                    className="w-full bg-gm-red hover:bg-gm-red-dark text-white font-extrabold text-sm py-4 rounded-xl shadow transition-all flex items-center justify-center gap-2"
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                  <a
+                    href={`https://wa.me/${CONTACT_INFO.whatsapp}?text=${encodeURIComponent(
+                      `Hello Gurudev Motors, I have submitted Exchange Request ${submittedData.exchangeNumber} for my ${submittedData.oldVehicle}. Please confirm valuation.`
+                    )}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs py-3.5 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2"
                   >
                     <MessageSquare className="w-4 h-4" />
-                    <span>Get Guaranteed Exchange Quote On WhatsApp ↗</span>
+                    <span>Chat on WhatsApp</span>
+                  </a>
+                  <button
+                    onClick={() => {
+                      setSubmittedData(null);
+                      setCustomerName('');
+                      setMobile('');
+                      setMessage('');
+                    }}
+                    className="border border-gm-line hover:border-gm-navy text-gm-navy font-bold text-xs py-3.5 rounded-xl transition-colors"
+                  >
+                    Submit Another Request
                   </button>
-                </form>
-              )}
-            </div>
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={handleExchangeSubmit} className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-black text-gm-navy mb-4">
+                    1. Enter Your Old Vehicle Details
+                  </h3>
+
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-gm-navy mb-1.5">Current Brand *</label>
+                        <select
+                          value={oldBrand}
+                          onChange={(e) => setOldBrand(e.target.value)}
+                          className="w-full px-4 py-3 rounded-xl border border-gm-line text-xs font-semibold focus:outline-none focus:border-gm-navy bg-white"
+                        >
+                          {VEHICLE_BRANDS.map((b) => (
+                            <option key={b} value={b}>{b}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gm-navy mb-1.5">Model Name *</label>
+                        <input
+                          type="text"
+                          value={oldModel}
+                          onChange={(e) => setOldModel(e.target.value)}
+                          placeholder="e.g. Splendor, Activa, Pulsar"
+                          className="w-full px-4 py-3 rounded-xl border border-gm-line text-xs font-medium focus:outline-none focus:border-gm-navy"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-gm-navy mb-1.5">Reg. Year *</label>
+                        <select
+                          value={year}
+                          onChange={(e) => setYear(e.target.value)}
+                          className="w-full px-3 py-3 rounded-xl border border-gm-line text-xs font-semibold focus:outline-none focus:border-gm-navy bg-white"
+                        >
+                          {[2025, 2024, 2023, 2022, 2021, 2020, 2019, 2018, 2017, 2016, 2015, 2014, 2013, 2012].map((y) => (
+                            <option key={y} value={y}>{y}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gm-navy mb-1.5">Kilometers Run *</label>
+                        <input
+                          type="number"
+                          value={km}
+                          onChange={(e) => setKm(e.target.value)}
+                          placeholder="e.g. 25000"
+                          className="w-full px-4 py-3 rounded-xl border border-gm-line text-xs font-medium focus:outline-none focus:border-gm-navy"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gm-navy mb-1.5">Condition *</label>
+                        <select
+                          value={condition}
+                          onChange={(e) => setCondition(e.target.value)}
+                          className="w-full px-3 py-3 rounded-xl border border-gm-line text-xs font-semibold focus:outline-none focus:border-gm-navy bg-white"
+                        >
+                          <option value="EXCELLENT">Excellent (Like New)</option>
+                          <option value="GOOD">Good (Minor wear)</option>
+                          <option value="FAIR">Fair (Needs service)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-gm-navy mb-1.5">Upgrading To (Desired Model) *</label>
+                      <input
+                        type="text"
+                        value={targetVehicle}
+                        onChange={(e) => setTargetVehicle(e.target.value)}
+                        placeholder="e.g. Hero Splendor Plus XTEC, Activa 6G, Kinetic Zulu"
+                        className="w-full px-4 py-3 rounded-xl border border-gm-line text-xs font-medium focus:outline-none focus:border-gm-navy"
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-gm-line">
+                  <h3 className="text-lg font-black text-gm-navy mb-4">
+                    2. Contact Details for Valuation Certificate
+                  </h3>
+
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-gm-navy mb-1.5">Full Name *</label>
+                        <input
+                          type="text"
+                          value={customerName}
+                          onChange={(e) => setCustomerName(e.target.value)}
+                          placeholder="Enter your name"
+                          className="w-full px-4 py-3 rounded-xl border border-gm-line text-xs font-medium focus:outline-none focus:border-gm-navy"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gm-navy mb-1.5">10-Digit Mobile *</label>
+                        <input
+                          type="tel"
+                          value={mobile}
+                          onChange={(e) => setMobile(e.target.value)}
+                          placeholder="e.g. 9826123456"
+                          maxLength={10}
+                          className="w-full px-4 py-3 rounded-xl border border-gm-line text-xs font-medium focus:outline-none focus:border-gm-navy"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-gm-navy mb-1.5">Email (Optional)</label>
+                        <input
+                          type="email"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          placeholder="name@example.com"
+                          className="w-full px-4 py-3 rounded-xl border border-gm-line text-xs font-medium focus:outline-none focus:border-gm-navy"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gm-navy mb-1.5">Additional Notes</label>
+                        <input
+                          type="text"
+                          value={message}
+                          onChange={(e) => setMessage(e.target.value)}
+                          placeholder="e.g. 1st owner, new tyre, single hand"
+                          className="w-full px-4 py-3 rounded-xl border border-gm-line text-xs font-medium focus:outline-none focus:border-gm-navy"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {errorMsg && (
+                  <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span>{errorMsg}</span>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="w-full bg-gm-red hover:bg-gm-red-dark text-white font-extrabold text-xs py-4 rounded-xl shadow transition-all flex items-center justify-center gap-2 disabled:opacity-60"
+                >
+                  {submitting ? (
+                    <span>Registering Exchange Request...</span>
+                  ) : (
+                    <>
+                      <MessageSquare className="w-4 h-4" />
+                      <span>Get Guaranteed Exchange Quote On WhatsApp ↗</span>
+                    </>
+                  )}
+                </button>
+              </form>
+            )}
           </div>
 
           {/* Real-time Estimated Value Display */}
@@ -255,5 +405,13 @@ export default function ExchangePage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ExchangePage() {
+  return (
+    <Suspense fallback={<div className="py-20 text-center text-xs text-gm-muted">Loading Exchange Form...</div>}>
+      <ExchangePageContent />
+    </Suspense>
   );
 }

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { Camera, Sparkles } from 'lucide-react';
+import { Camera, Sparkles, Image as ImageIcon } from 'lucide-react';
 
 export default function GalleryPage() {
   const [items, setItems] = useState<any[]>([]);
@@ -26,9 +26,19 @@ export default function GalleryPage() {
     load();
   }, []);
 
+  const categories = [
+    { key: 'ALL', label: 'All Photos' },
+    { key: 'SHOWROOM', label: 'Showroom' },
+    { key: 'VEHICLES', label: 'Vehicles' },
+    { key: 'WORKSHOP', label: 'Workshop' },
+    { key: 'DELIVERY', label: 'Delivery' },
+    { key: 'EVENTS', label: 'Events' },
+    { key: 'OTHER', label: 'Other' },
+  ];
+
   const filtered = items.filter((item) => {
     if (category === 'ALL') return true;
-    return item.category === category;
+    return item.category?.toUpperCase() === category;
   });
 
   return (
@@ -52,29 +62,29 @@ export default function GalleryPage() {
 
         {/* Category Filter Tabs */}
         <div className="flex flex-wrap items-center justify-center gap-2 mb-10">
-          {['ALL', 'SHOWROOM', 'VEHICLES', 'WORKSHOP'].map((cat) => (
+          {categories.map((cat) => (
             <button
-              key={cat}
-              onClick={() => setCategory(cat)}
+              key={cat.key}
+              onClick={() => setCategory(cat.key)}
               className={`px-5 py-2.5 rounded-full text-xs font-black transition-all ${
-                category === cat
+                category === cat.key
                   ? 'bg-gm-navy text-white shadow-md'
                   : 'bg-white text-gm-navy hover:bg-gm-navy hover:text-white border border-gm-line'
               }`}
             >
-              {cat === 'ALL' ? 'All Photos' : cat}
+              {cat.label}
             </button>
           ))}
         </div>
 
         {/* Gallery Grid */}
         {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-16">
             {[1, 2, 3, 4, 5, 6].map((n) => (
               <div key={n} className="h-64 bg-white rounded-2xl animate-pulse border border-gm-line" />
             ))}
           </div>
-        ) : (
+        ) : filtered.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-16">
             {filtered.map((item) => (
               <div
@@ -103,6 +113,20 @@ export default function GalleryPage() {
                 </div>
               </div>
             ))}
+          </div>
+        ) : (
+          <div className="text-center py-16 bg-white rounded-3xl border border-gm-line max-w-md mx-auto mb-16 p-8">
+            <ImageIcon className="w-12 h-12 text-gm-muted mx-auto mb-3 opacity-60" />
+            <h3 className="text-lg font-black text-gm-navy mb-1">No Photos in this Category</h3>
+            <p className="text-xs text-gm-muted mb-4">
+              Photos for this section will be added soon. Browse other gallery categories.
+            </p>
+            <button
+              onClick={() => setCategory('ALL')}
+              className="bg-gm-navy text-white text-xs font-bold px-5 py-2.5 rounded-xl hover:bg-gm-navy-dark transition-colors"
+            >
+              View All Photos
+            </button>
           </div>
         )}
       </div>

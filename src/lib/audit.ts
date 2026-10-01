@@ -4,7 +4,7 @@ import { AuthUser } from './auth';
 interface AuditParams {
   user: AuthUser;
   action: 'CREATE' | 'UPDATE' | 'DELETE' | 'ASSIGN' | 'APPROVE' | 'STATUS_CHANGE' | 'LOGIN' | 'EXPORT';
-  module: 'LEADS' | 'CUSTOMERS' | 'VEHICLES' | 'SALES' | 'BOOKINGS' | 'TEST_DRIVES' | 'SERVICE' | 'ACCOUNTS' | 'EMPLOYEES' | 'ROLES' | 'CONTENT' | 'SETTINGS' | 'USERS' | 'AUTH';
+  module: 'LEADS' | 'CUSTOMERS' | 'VEHICLES' | 'SALES' | 'BOOKINGS' | 'TEST_DRIVES' | 'SERVICE' | 'ACCOUNTS' | 'EXCHANGE' | 'FINANCE' | 'EMPLOYEES' | 'ROLES' | 'CONTENT' | 'SETTINGS' | 'USERS' | 'AUTH';
   recordId?: string;
   oldValue?: string;
   newValue?: string;

@@ -66,6 +66,12 @@ export async function POST(req: NextRequest) {
     }
 
     const cleanMobile = mobile.replace(/[^0-9]/g, '');
+    if (!/^[6-9]\d{9}$/.test(cleanMobile)) {
+      return NextResponse.json(
+        { success: false, message: 'Please enter a valid 10-digit Indian mobile number' },
+        { status: 400 }
+      );
+    }
 
     // Check if customer already exists or create new
     let customer = await prisma.customer.findUnique({
@@ -135,7 +141,7 @@ export async function POST(req: NextRequest) {
     });
   } catch (error: any) {
     console.error('Create lead error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, message: 'Unable to submit your enquiry right now.' }, { status: 500 });
   }
 }
 
@@ -191,6 +197,47 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ success: true, lead: updatedLead });
   } catch (error: any) {
     console.error('Update lead error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const user = await getSessionUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const canDelete = await hasPermission('leads', 'delete', user);
+    if (!canDelete) {
+      return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
+    }
+
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get('id');
+    if (!id) {
+      return NextResponse.json({ error: 'Lead ID is required' }, { status: 400 });
+    }
+
+    const existingLead = await prisma.lead.findUnique({ where: { id } });
+    if (!existingLead) {
+      return NextResponse.json({ error: 'Lead not found' }, { status: 404 });
+    }
+
+    await prisma.lead.delete({ where: { id } });
+
+    await logAudit({
+      user,
+      action: 'DELETE',
+      module: 'LEADS',
+      recordId: existingLead.leadNumber,
+      oldValue: `${existingLead.customerName} - ${existingLead.vehicleModel}`,
+      newValue: 'Deleted lead record',
+    });
+
+    return NextResponse.json({ success: true, message: 'Lead deleted successfully' });
+  } catch (error: any) {
+    console.error('Delete lead error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

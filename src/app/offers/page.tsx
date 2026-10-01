@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Tag, Sparkles, Calendar, CheckCircle2, ArrowRight } from 'lucide-react';
-import { formatDate } from '@/lib/utils';
+import Link from 'next/link';
+import { Tag, Sparkles, Calendar, CheckCircle2, ArrowRight, Gift, Percent } from 'lucide-react';
+import { formatDate, formatCurrency } from '@/lib/utils';
 import { useModal } from '@/context/ModalContext';
 
 export default function OffersPage() {
@@ -47,12 +48,12 @@ export default function OffersPage() {
         </div>
 
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-16">
             {[1, 2].map((n) => (
               <div key={n} className="h-64 bg-white rounded-3xl animate-pulse border border-gm-line" />
             ))}
           </div>
-        ) : (
+        ) : offers.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16">
             {offers.map((offer) => (
               <div
@@ -60,7 +61,7 @@ export default function OffersPage() {
                 className="bg-white rounded-3xl p-8 border border-gm-line shadow-sm hover:shadow-gm transition-all flex flex-col justify-between"
               >
                 <div>
-                  <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
                     <span className="text-[10px] font-black uppercase tracking-wider bg-gm-red text-white px-3 py-1 rounded-full">
                       {offer.badge || 'SPECIAL DEAL'}
                     </span>
@@ -78,6 +79,23 @@ export default function OffersPage() {
                   <div className="text-xl font-black text-gm-red mb-3">
                     {offer.discountText}
                   </div>
+
+                  {/* Highlights pills */}
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {offer.exchangeBonus > 0 && (
+                      <span className="text-[11px] font-bold bg-amber-50 text-amber-900 border border-amber-200 px-2.5 py-1 rounded-lg flex items-center gap-1">
+                        <Gift className="w-3 h-3 text-amber-600" />
+                        ₹{offer.exchangeBonus.toLocaleString('en-IN')} Exchange Bonus
+                      </span>
+                    )}
+                    {offer.financeOffer && (
+                      <span className="text-[11px] font-bold bg-blue-50 text-blue-900 border border-blue-200 px-2.5 py-1 rounded-lg flex items-center gap-1">
+                        <Percent className="w-3 h-3 text-blue-600" />
+                        {offer.financeOffer}
+                      </span>
+                    )}
+                  </div>
+
                   <p className="text-xs sm:text-sm text-gm-muted leading-relaxed mb-6">
                     {offer.description}
                   </p>
@@ -99,6 +117,20 @@ export default function OffersPage() {
                 </div>
               </div>
             ))}
+          </div>
+        ) : (
+          <div className="text-center py-16 bg-white rounded-3xl border border-gm-line max-w-lg mx-auto mb-16 p-8">
+            <Tag className="w-12 h-12 text-gm-red mx-auto mb-3 opacity-60" />
+            <h3 className="text-xl font-black text-gm-navy mb-2">No Active Seasonal Promos Right Now</h3>
+            <p className="text-xs text-gm-muted mb-6 leading-relaxed">
+              Our showroom running offers are updated regularly for festive seasons. Contact our Raipur sales desk directly to enquire about current on-the-spot cash discounts and helmet schemes.
+            </p>
+            <button
+              onClick={() => openEnquiry('Showroom current discount enquiry')}
+              className="bg-gm-red hover:bg-gm-red-dark text-white text-xs font-black px-6 py-3 rounded-xl transition-colors"
+            >
+              Ask Showroom Team on WhatsApp ↗
+            </button>
           </div>
         )}
       </div>

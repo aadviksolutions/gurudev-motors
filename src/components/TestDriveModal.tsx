@@ -18,12 +18,29 @@ export default function TestDriveModal({ isOpen, onClose, vehicle }: TestDriveMo
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
   if (!isOpen || !vehicle) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !mobile || !date) return;
+    setErrorMsg('');
+
+    if (!name.trim()) {
+      setErrorMsg('Please enter your full name');
+      return;
+    }
+
+    const cleanMobile = mobile.replace(/[^0-9]/g, '');
+    if (!/^[6-9]\d{9}$/.test(cleanMobile)) {
+      setErrorMsg('Please enter a valid 10-digit Indian mobile number');
+      return;
+    }
+
+    if (!date) {
+      setErrorMsg('Please choose your preferred ride date');
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -31,19 +48,24 @@ export default function TestDriveModal({ isOpen, onClose, vehicle }: TestDriveMo
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          customerName: name,
-          mobile,
+          customerName: name.trim(),
+          mobile: cleanMobile,
           vehicleId: vehicle.id,
           preferredDate: date,
           preferredTime: time,
-          notes,
+          notes: notes.trim() || undefined,
         }),
       });
-      if (res.ok) {
-        setSubmitted(true);
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || data.error || 'Failed to book test ride');
       }
-    } catch (err) {
+
+      setSubmitted(true);
+    } catch (err: any) {
       console.error('Test drive booking error:', err);
+      setErrorMsg(err.message || 'Error booking test drive. Please call dealership.');
     } finally {
       setSubmitting(false);
     }
@@ -96,6 +118,11 @@ export default function TestDriveModal({ isOpen, onClose, vehicle }: TestDriveMo
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-3">
+              {errorMsg && (
+                <p className="rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-xs font-semibold text-red-700" role="alert">
+                  {errorMsg}
+                </p>
+              )}
               <div>
                 <label className="block text-xs font-bold text-gm-navy mb-1">Your Full Name *</label>
                 <input

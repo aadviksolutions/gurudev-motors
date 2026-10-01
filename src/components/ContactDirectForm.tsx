@@ -11,32 +11,50 @@ export default function ContactDirectForm() {
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !mobile) return;
+    setErrorMsg('');
+
+    if (!name.trim()) {
+      setErrorMsg('Please enter your full name');
+      return;
+    }
+
+    const cleanMobile = mobile.replace(/[^0-9]/g, '');
+    if (!/^[6-9]\d{9}$/.test(cleanMobile)) {
+      setErrorMsg('Please enter a valid 10-digit Indian mobile number');
+      return;
+    }
 
     setSubmitting(true);
     try {
-      await fetch('/api/leads', {
+      const res = await fetch('/api/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          customerName: name,
-          mobile,
-          vehicleModel: vehicle || 'Website Contact Form',
-          source: 'WEBSITE',
-          notes: message || 'Direct message from showroom contact form',
+          customerName: name.trim(),
+          mobile: cleanMobile,
+          vehicleModel: vehicle.trim() || 'Website Contact Form',
+          source: 'CONTACT_FORM',
+          notes: message.trim() || 'Direct message from showroom contact form',
         }),
       });
 
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || data.error || 'Failed to submit enquiry');
+      }
+
       setSubmitted(true);
-      const text = `Hello Gurudev Motors, I am ${name}. ${vehicle ? 'Requirement: ' + vehicle + '. ' : ''}Mobile: ${mobile}. ${message}`;
+      const text = `Hello Gurudev Motors, I am ${name.trim()}. ${vehicle ? 'Requirement: ' + vehicle.trim() + '. ' : ''}Mobile: ${cleanMobile}. ${message.trim()}`;
       setTimeout(() => {
         window.open(`https://wa.me/${CONTACT_INFO.whatsapp}?text=${encodeURIComponent(text)}`, '_blank');
-      }, 300);
-    } catch (err) {
+      }, 400);
+    } catch (err: any) {
       console.error(err);
+      setErrorMsg(err.message || 'Error submitting message. Please call us directly.');
     } finally {
       setSubmitting(false);
     }
@@ -68,6 +86,11 @@ export default function ContactDirectForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {errorMsg && (
+        <p className="rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-xs font-semibold text-red-700" role="alert">
+          {errorMsg}
+        </p>
+      )}
       <div>
         <label className="block text-xs font-bold text-gm-navy mb-1.5">
           Your Name <span className="text-gm-red">*</span>

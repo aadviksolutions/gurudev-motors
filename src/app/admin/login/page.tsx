@@ -60,11 +60,22 @@ export default function AdminLoginPage() {
       <div className="absolute -top-32 -left-32 w-96 h-96 bg-gm-red/20 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute -bottom-32 -right-32 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center relative z-10">
-        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gm-red text-white font-black text-2xl mb-3 shadow-lg shadow-gm-red/30">
-          GM
+      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center relative z-10 px-4">
+        {/* Actual Gurudev Motors Logo (Preserving white background cleanly in intentional premium container) */}
+        <div className="inline-flex items-center justify-center bg-white px-5 py-3 rounded-2xl shadow-xl border border-white/20 mb-4 mx-auto">
+          <div className="w-[190px] sm:w-[240px] max-w-[260px] flex items-center justify-center">
+            <Image
+              src="/images/logo.jpeg"
+              alt="Gurudev Motors"
+              width={260}
+              height={70}
+              priority
+              className="w-full h-auto object-contain"
+            />
+          </div>
         </div>
-        <h2 className="text-3xl font-black text-white tracking-tight uppercase">
+
+        <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight uppercase">
           Gurudev Motors
         </h2>
         <p className="mt-1 text-xs uppercase tracking-widest font-extrabold text-slate-400">

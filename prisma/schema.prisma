@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -21,16 +21,19 @@ model User {
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
-  assignedLeads  Lead[]         @relation("AssignedLeads")
-  testDrives     TestDrive[]    @relation("AssignedTestDrives")
-  sales          Sale[]         @relation("SalesPerson")
-  bookings       Booking[]      @relation("SalesBookings")
-  serviceBookings ServiceBooking[] @relation("AdvisorServiceBookings")
-  serviceJobCards ServiceJobCard[] @relation("AdvisorJobCards")
-  paymentsRecorded Payment[]    @relation("RecordedPayments")
-  expensesRecorded Expense[]    @relation("RecordedExpenses")
-  notifications  Notification[]
-  auditLogs      AuditLog[]
+  assignedLeads     Lead[]              @relation("AssignedLeads")
+  testDrives        TestDrive[]         @relation("AssignedTestDrives")
+  sales             Sale[]              @relation("SalesPerson")
+  bookings          Booking[]           @relation("SalesBookings")
+  serviceBookings   ServiceBooking[]    @relation("AdvisorServiceBookings")
+  serviceJobCards   ServiceJobCard[]    @relation("AdvisorJobCards")
+  paymentsRecorded  Payment[]           @relation("RecordedPayments")
+  expensesRecorded  Expense[]           @relation("RecordedExpenses")
+  assignedExchanges ExchangeRequest[]   @relation("AssignedExchanges")
+  assignedFinances  FinanceApplication[] @relation("AssignedFinances")
+  followUps         FollowUp[]          @relation("AssignedFollowUps")
+  notifications     Notification[]
+  auditLogs         AuditLog[]
 
   @@index([roleId])
   @@index([departmentId])
@@ -54,7 +57,7 @@ model Permission {
   id        String   @id @default(cuid())
   roleId    String
   role      Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  module    String   // leads, customers, vehicles, sales, bookings, test_drives, service, accounts, reports, employees, roles, content, settings, audit_logs
+  module    String   // leads, customers, vehicles, sales, bookings, test_drives, service, accounts, reports, employees, roles, content, settings, audit_logs, exchange, finance
   view      Boolean  @default(false)
   create    Boolean  @default(false)
   edit      Boolean  @default(false)
@@ -96,13 +99,17 @@ model Customer {
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 
-  leads       Lead[]
-  testDrives  TestDrive[]
-  bookings    Booking[]
-  sales       Sale[]
-  invoices    Invoice[]
-  payments    Payment[]
-  jobCards    ServiceJobCard[]
+  leads               Lead[]
+  testDrives          TestDrive[]
+  bookings            Booking[]
+  sales               Sale[]
+  invoices            Invoice[]
+  payments            Payment[]
+  jobCards            ServiceJobCard[]
+  serviceBookings     ServiceBooking[]
+  exchangeRequests    ExchangeRequest[]
+  financeApplications FinanceApplication[]
+  followUps           FollowUp[]
 
   @@index([mobile])
   @@index([name])
@@ -116,8 +123,8 @@ model Lead {
   email          String?
   vehicleModel   String
   budget         String?
-  source         String    @default("WEBSITE") // WEBSITE, WALK_IN, WHATSAPP, CALL, REFERRAL
-  status         String    @default("NEW") // NEW, CONTACTED, INTERESTED, TEST_DRIVE, NEGOTIATION, BOOKED, DELIVERED, LOST
+  source         String    @default("WEBSITE") // WEBSITE, CONTACT_FORM, VEHICLE_ENQUIRY, TEST_RIDE, FINANCE_ENQUIRY, EXCHANGE_ENQUIRY, SERVICE_BOOKING, CALLBACK_REQUEST, WHATSAPP, WALK_IN
+  status         String    @default("NEW") // NEW, CONTACTED, FOLLOW_UP, INTERESTED, NEGOTIATION, CONVERTED, NOT_INTERESTED, LOST, CLOSED
   priority       String    @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
   followUpDate   DateTime?
   notes          String?
@@ -128,39 +135,60 @@ model Lead {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
+  followUps      FollowUp[]
+
   @@index([status])
   @@index([assignedToId])
   @@index([mobile])
 }
 
 model Vehicle {
-  id           String         @id @default(cuid())
-  brand        String
-  model        String
-  variant      String?
-  category     String         @default("NEW") // NEW, PRE_OWNED, ELECTRIC
-  year         Int            @default(2026)
-  fuel         String         @default("Petrol") // Petrol, Electric, Diesel, Hybrid
-  transmission String         @default("Manual") // Manual, Automatic, EV Direct
-  km           Int            @default(0)
-  colour       String         @default("Standard")
-  price        Float          @default(0)
-  offerPrice   Float?
-  emi          Float?
-  description  String?
-  features     String?        // Comma-separated or JSON
-  stockStatus  String         @default("IN_STOCK") // IN_STOCK, BOOKED, SOLD, IN_TRANSIT
-  featured     Boolean        @default(false)
-  published    Boolean        @default(true)
-  imageUrl     String?        @default("/images/hero.jpeg")
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  id                String         @id @default(cuid())
+  brand             String
+  model             String
+  variant           String?
+  category          String         @default("NEW") // NEW, PRE_OWNED, ELECTRIC
+  vehicleType       String         @default("Motorcycle") // Motorcycle, Scooter, Electric Scooter, Electric Loader
+  year              Int            @default(2026)
+  fuel              String         @default("Petrol") // Petrol, Electric, Diesel, Hybrid
+  transmission      String         @default("Manual") // Manual, Automatic, EV Direct
+  km                Int            @default(0)
+  colour            String         @default("Standard")
+  price             Float          @default(0)
+  exShowroomPrice   Float?
+  onRoadPrice       Float?
+  offerPrice        Float?
+  emi               Float?
+  engineCC          Int?           // Engine capacity in cc (e.g. 100, 110, 125, 150)
+  mileage           String?        // e.g. "65 kmpl" or "110 km/charge"
+  regYear           Int?           // Registration year
+  description       String?
+  features          String?        // Comma-separated or JSON list of features
+  specifications    String?        // JSON or structured specs (dimensions, battery, etc.)
+  stockStatus       String         @default("IN_STOCK") // IN_STOCK, BOOKED, RESERVED, SOLD, IN_TRANSIT
+  featured          Boolean        @default(false)
+  published         Boolean        @default(true)
+  exchangeAvailable Boolean        @default(true)
+  financeAvailable  Boolean        @default(true)
+  imageUrl          String?        @default("/images/hero.jpeg")
+  // Pre-Owned specific fields
+  ownerCount        Int?           @default(1)
+  condition         String?        @default("EXCELLENT") // EXCELLENT, GOOD, FAIR
+  expectedPrice     Float?
+  insuranceValidTill DateTime?
+  rcStatus          String?        @default("ORIGINAL_RC_AVAILABLE")
+  warrantyDetails   String?        @default("6 Months Engine Warranty")
+  inspectionStatus  String?        @default("40_POINT_PASSED")
+  documentsStatus   String?        @default("VERIFIED")
 
-  images       VehicleImage[]
-  testDrives   TestDrive[]
-  bookings     Booking[]
-  sales        Sale[]
-  jobCards     ServiceJobCard[]
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  images            VehicleImage[]
+  testDrives        TestDrive[]
+  bookings          Booking[]
+  sales             Sale[]
+  jobCards          ServiceJobCard[]
 
   @@index([category])
   @@index([brand])
@@ -182,6 +210,7 @@ model VehicleImage {
 
 model TestDrive {
   id            String    @id @default(cuid())
+  requestNumber String?   @unique
   customerName  String
   mobile        String
   email         String?
@@ -189,6 +218,7 @@ model TestDrive {
   vehicle       Vehicle   @relation(fields: [vehicleId], references: [id])
   preferredDate DateTime
   preferredTime String
+  location      String?   @default("Showroom") // Showroom, Doorstep
   status        String    @default("REQUESTED") // REQUESTED, CONFIRMED, COMPLETED, CANCELLED
   notes         String?
   assignedToId  String?
@@ -200,6 +230,86 @@ model TestDrive {
 
   @@index([status])
   @@index([vehicleId])
+}
+
+model ExchangeRequest {
+  id                     String    @id @default(cuid())
+  exchangeNumber         String    @unique
+  customerName           String
+  mobile                 String
+  email                  String?
+  currentBrand           String
+  currentModel           String
+  registrationYear       String
+  kmDriven               String
+  condition              String    @default("GOOD") // EXCELLENT, GOOD, FAIR, POOR
+  existingVehicleDetails String?
+  vehiclePhotos          String?   // comma separated or JSON urls
+  upgradingVehicle       String
+  message                String?
+  status                 String    @default("NEW") // NEW, CONTACTED, INSPECTION_SCHEDULED, INSPECTION_COMPLETED, VALUATION_GIVEN, NEGOTIATION, CONVERTED, REJECTED, CLOSED
+  estimatedValuation     Float?
+  finalValuation         Float?
+  notes                  String?
+  inspectionDate         DateTime?
+  assignedStaffId        String?
+  assignedStaff          User?     @relation("AssignedExchanges", fields: [assignedStaffId], references: [id])
+  followUpDate           DateTime?
+  customerId             String?
+  customer               Customer? @relation(fields: [customerId], references: [id])
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  @@index([status])
+  @@index([mobile])
+}
+
+model FinanceApplication {
+  id                String    @id @default(cuid())
+  applicationNumber String    @unique
+  customerName      String
+  mobile            String
+  email             String?
+  vehicleModel      String
+  loanAmount        Float
+  employmentType    String    @default("Salaried") // Salaried, Self-Employed, Business, Agriculture, Student, Other
+  monthlyIncome     String?
+  preferredTenure   Int       @default(24) // in months
+  downPayment       Float?    @default(0)
+  message           String?
+  status            String    @default("NEW") // NEW, CONTACTED, DOCUMENTS_PENDING, SUBMITTED, APPROVED, REJECTED, DISBURSED, CLOSED
+  assignedStaffId   String?
+  assignedStaff     User?     @relation("AssignedFinances", fields: [assignedStaffId], references: [id])
+  notes             String?
+  bankPartner       String?
+  interestRate      Float?
+  emi               Float?
+  customerId        String?
+  customer          Customer? @relation(fields: [customerId], references: [id])
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([status])
+  @@index([mobile])
+}
+
+model FollowUp {
+  id            String    @id @default(cuid())
+  leadId        String?
+  lead          Lead?     @relation(fields: [leadId], references: [id])
+  customerId    String?
+  customer      Customer? @relation(fields: [customerId], references: [id])
+  scheduledDate DateTime
+  completedDate DateTime?
+  status        String    @default("PENDING") // PENDING, COMPLETED, CANCELLED
+  notes         String?
+  userId        String?
+  user          User?     @relation("AssignedFollowUps", fields: [userId], references: [id])
+  createdAt     DateTime  @default(now())
+
+  @@index([leadId])
+  @@index([status])
+  @@index([scheduledDate])
 }
 
 model Booking {
@@ -318,23 +428,28 @@ model Expense {
 }
 
 model ServiceBooking {
-  id            String   @id @default(cuid())
-  bookingNumber String   @unique
-  customerName  String
-  mobile        String
-  vehicleModel  String
-  regNumber     String?
-  serviceType   String   @default("REGULAR") // REGULAR, REPAIR, INSPECTION, DOORSTEP, WARRANTY
-  preferredDate DateTime
-  preferredTime String
-  advisorId     String?
-  advisor       User?    @relation("AdvisorServiceBookings", fields: [advisorId], references: [id])
-  status        String   @default("REQUESTED") // REQUESTED, CONFIRMED, COMPLETED, CANCELLED
-  notes         String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id                    String    @id @default(cuid())
+  bookingNumber         String    @unique
+  customerName          String
+  mobile                String
+  email                 String?
+  vehicleModel          String
+  regNumber             String?
+  serviceType           String    @default("GENERAL_SERVICE") // GENERAL_SERVICE, OIL_CHANGE, BRAKE_SERVICE, TYRE_SERVICE, BATTERY, ENGINE, ELECTRICAL, PERIODIC_MAINTENANCE, PICKUP_DROP, DOORSTEP_SERVICE, OTHER
+  preferredDate         DateTime
+  preferredTime         String
+  additionalRequirement String?
+  status                String    @default("NEW") // NEW, CONFIRMED, RESCHEDULED, VEHICLE_RECEIVED, IN_SERVICE, READY, DELIVERED, CANCELLED
+  advisorId             String?
+  advisor               User?     @relation("AdvisorServiceBookings", fields: [advisorId], references: [id])
+  customerId            String?
+  customer              Customer? @relation(fields: [customerId], references: [id])
+  notes                 String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
   @@index([status])
+  @@index([mobile])
 }
 
 model ServiceJobCard {
@@ -389,7 +504,7 @@ model Notification {
   id        String   @id @default(cuid())
   title     String
   message   String
-  type      String   @default("SYSTEM") // LEAD, TEST_DRIVE, BOOKING, SERVICE, PAYMENT, SYSTEM
+  type      String   @default("SYSTEM") // LEAD, TEST_DRIVE, BOOKING, SERVICE, PAYMENT, EXCHANGE, FINANCE, SYSTEM
   isRead    Boolean  @default(false)
   link      String?
   userId    String?
@@ -407,7 +522,7 @@ model AuditLog {
   userName  String
   userEmail String
   action    String   // CREATE, UPDATE, DELETE, ASSIGN, APPROVE, STATUS_CHANGE, LOGIN
-  module    String   // LEADS, VEHICLES, SERVICE, SALES, ACCOUNTS, ROLES, USERS
+  module    String   // LEADS, VEHICLES, SERVICE, SALES, ACCOUNTS, ROLES, USERS, EXCHANGE, FINANCE
   recordId  String?
   oldValue  String?
   newValue  String?
@@ -433,7 +548,7 @@ model WebsiteContent {
 model Gallery {
   id          String   @id @default(cuid())
   title       String
-  category    String   @default("SHOWROOM") // SHOWROOM, WORKSHOP, VEHICLES, EVENTS
+  category    String   @default("SHOWROOM") // SHOWROOM, VEHICLES, WORKSHOP, DELIVERY, EVENTS, OTHER
   imageUrl    String
   description String?
   order       Int      @default(0)
@@ -445,16 +560,21 @@ model Gallery {
 }
 
 model Offer {
-  id          String    @id @default(cuid())
-  title       String
-  badge       String?   @default("SPECIAL DEAL")
-  discountText String
-  description String
-  imageUrl    String?
-  validTill   DateTime?
-  terms       String?
-  active      Boolean   @default(true)
-  createdAt   DateTime  @default(now())
+  id            String    @id @default(cuid())
+  title         String
+  badge         String?   @default("SPECIAL DEAL")
+  discountText  String
+  exchangeBonus Float?    @default(0)
+  financeOffer  String?
+  vehicleModel  String?
+  description   String
+  imageUrl      String?
+  startDate     DateTime?
+  validTill     DateTime?
+  terms         String?
+  active        Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @default(now()) @updatedAt
 
   @@index([active])
 }

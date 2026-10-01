@@ -1,34 +1,123 @@
+require('dotenv/config');
+
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
 
-const prisma = new PrismaClient();
+const databaseUrl = process.env.DATABASE_URL || '';
+if (!/^postgres(?:ql)?:\/\//i.test(databaseUrl)) {
+  throw new Error('Seed requires a configured PostgreSQL DATABASE_URL.');
+}
+
+const client = new PrismaClient();
+const createdCounts = {};
+const skippedCounts = {};
+let destructiveOperationsPerformed = false;
+
+const modelIdentities = {
+  department: (data) => ({ unique: { code: data.code } }),
+  role: (data) => ({ unique: { code: data.code } }),
+  permission: (data) => ({ unique: { roleId_module: { roleId: data.roleId, module: data.module } } }),
+  user: (data) => ({ unique: { email: data.email.toLowerCase() } }),
+  vehicle: (data) => ({
+    first: {
+      brand: data.brand,
+      model: data.model,
+      variant: data.variant ?? null,
+      year: data.year,
+    },
+  }),
+  customer: (data) => ({ unique: { mobile: data.mobile } }),
+  lead: (data) => ({ unique: { leadNumber: data.leadNumber } }),
+  testDrive: (data) => ({
+    first: { mobile: data.mobile, vehicleId: data.vehicleId, notes: data.notes ?? null },
+  }),
+  booking: (data) => ({ unique: { bookingNumber: data.bookingNumber } }),
+  sale: (data) => ({ unique: { invoiceNumber: data.invoiceNumber } }),
+  invoice: (data) => ({ unique: { invoiceNumber: data.invoiceNumber } }),
+  payment: (data) => ({ unique: { paymentNumber: data.paymentNumber } }),
+  serviceJobCard: (data) => ({ unique: { jobCardNumber: data.jobCardNumber } }),
+  servicePart: (data) => ({
+    first: { jobCardId: data.jobCardId, partName: data.partName, partNumber: data.partNumber ?? null },
+  }),
+  expense: (data) => ({ unique: { expenseNumber: data.expenseNumber } }),
+  notification: (data) => ({ first: { title: data.title, userId: data.userId ?? null, link: data.link ?? null } }),
+  auditLog: (data) => ({
+    first: { action: data.action, module: data.module, recordId: data.recordId ?? null, newValue: data.newValue ?? null },
+  }),
+  websiteContent: (data) => ({ unique: { sectionKey: data.sectionKey } }),
+  gallery: (data) => ({ first: { title: data.title, imageUrl: data.imageUrl } }),
+  offer: (data) => ({ first: { title: data.title, discountText: data.discountText } }),
+};
+
+async function createIfMissing(modelName, args) {
+  const delegate = client[modelName];
+  const identity = modelIdentities[modelName](args.data);
+  const existing = identity.unique
+    ? await delegate.findUnique({ where: identity.unique })
+    : await delegate.findFirst({ where: identity.first });
+
+  if (existing) {
+    skippedCounts[modelName] = (skippedCounts[modelName] || 0) + 1;
+    return existing;
+  }
+
+  const created = await delegate.create(args);
+  createdCounts[modelName] = (createdCounts[modelName] || 0) + 1;
+  return created;
+}
+
+const interceptedModels = new Set(Object.keys(modelIdentities));
+const prisma = new Proxy(client, {
+  get(target, property, receiver) {
+    const delegate = Reflect.get(target, property, receiver);
+    if (typeof property !== 'string' || !interceptedModels.has(property)) {
+      return typeof delegate === 'function' ? delegate.bind(target) : delegate;
+    }
+
+    return new Proxy(delegate, {
+      get(modelDelegate, method, modelReceiver) {
+        if (method === 'create') return (args) => createIfMissing(property, args);
+        const value = Reflect.get(modelDelegate, method, modelReceiver);
+        return typeof value === 'function' ? value.bind(modelDelegate) : value;
+      },
+    });
+  },
+});
+
+async function resetDevelopmentDatabase() {
+  const resetRequested = process.argv.includes('--reset-development');
+  if (!resetRequested) return;
+
+  const url = new URL(databaseUrl);
+  const isLoopback = ['localhost', '127.0.0.1', '::1'].includes(url.hostname);
+  const databaseName = decodeURIComponent(url.pathname.replace(/^\//, ''));
+  const isDevelopmentDatabase = /(?:dev|local|test)/i.test(databaseName);
+  if (
+    process.env.NODE_ENV !== 'development' ||
+    process.env.ALLOW_DESTRUCTIVE_SEED !== 'true' ||
+    !isLoopback ||
+    !isDevelopmentDatabase
+  ) {
+    throw new Error(
+      'Development reset refused. It requires NODE_ENV=development, ALLOW_DESTRUCTIVE_SEED=true, and a loopback dev/test database.'
+    );
+  }
+
+  console.warn('Explicit development reset requested for a loopback dev/test database.');
+  destructiveOperationsPerformed = true;
+  for (const modelName of [
+    'auditLog', 'notification', 'followUp', 'servicePart', 'payment', 'invoice', 'expense',
+    'serviceJobCard', 'serviceBooking', 'sale', 'booking', 'testDrive', 'exchangeRequest',
+    'financeApplication', 'lead', 'customer', 'vehicleImage', 'vehicle', 'permission', 'user',
+    'role', 'department', 'websiteContent', 'gallery', 'offer',
+  ]) {
+    await client[modelName].deleteMany();
+  }
+}
 
 async function main() {
   console.log('Seeding Gurudev Motors database...');
-
-  // 1. Clear existing data in reverse order of foreign keys
-  await prisma.auditLog.deleteMany({});
-  await prisma.notification.deleteMany({});
-  await prisma.servicePart.deleteMany({});
-  await prisma.payment.deleteMany({});
-  await prisma.invoice.deleteMany({});
-  await prisma.expense.deleteMany({});
-  await prisma.serviceJobCard.deleteMany({});
-  await prisma.serviceBooking.deleteMany({});
-  await prisma.sale.deleteMany({});
-  await prisma.booking.deleteMany({});
-  await prisma.testDrive.deleteMany({});
-  await prisma.lead.deleteMany({});
-  await prisma.customer.deleteMany({});
-  await prisma.vehicleImage.deleteMany({});
-  await prisma.vehicle.deleteMany({});
-  await prisma.permission.deleteMany({});
-  await prisma.user.deleteMany({});
-  await prisma.role.deleteMany({});
-  await prisma.department.deleteMany({});
-  await prisma.websiteContent.deleteMany({});
-  await prisma.gallery.deleteMany({});
-  await prisma.offer.deleteMany({});
+  await resetDevelopmentDatabase();
 
   // 2. Create Departments
   const deptAdmin = await prisma.department.create({
@@ -288,7 +377,7 @@ async function main() {
     },
   });
 
-  console.log('Created staff members across 4 departments.');
+  console.log('Processed baseline staff accounts across 4 departments.');
 
   // 6. Create Vehicles
   const vehiclesData = [
@@ -519,7 +608,7 @@ async function main() {
     const v = await prisma.vehicle.create({ data: vData });
     createdVehicles.push(v);
   }
-  console.log(`Created ${createdVehicles.length} vehicles across New, Pre-Owned, and Electric.`);
+  console.log(`Processed ${createdVehicles.length} baseline vehicles across New, Pre-Owned, and Electric.`);
 
   // 7. Create Customers
   const customersData = [
@@ -988,7 +1077,10 @@ async function main() {
     },
   });
 
-  console.log('Database seeded successfully!');
+  console.log('Database seed completed.');
+  console.log(`Records created: ${JSON.stringify(createdCounts)}`);
+  console.log(`Records already existing/skipped: ${JSON.stringify(skippedCounts)}`);
+  console.log(`Destructive operations performed: ${destructiveOperationsPerformed ? 'yes (explicit development reset)' : 'no'}.`);
 }
 
 main()

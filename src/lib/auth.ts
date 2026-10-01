@@ -3,7 +3,11 @@ import bcrypt from 'bcryptjs';
 import { cookies } from 'next/headers';
 import { prisma } from './prisma';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'gurudev_motors_fallback_secret_key_2026';
+const JWT_SECRET = process.env.JWT_SECRET ?? '';
+
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET must be configured before starting the application.');
+}
 const COOKIE_NAME = 'gm_auth_token';
 
 export interface AuthUser {

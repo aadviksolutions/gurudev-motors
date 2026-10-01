@@ -29,6 +29,10 @@ export async function GET(req: NextRequest) {
           invoices: { include: { payments: true }, orderBy: { createdAt: 'desc' } },
           payments: { orderBy: { createdAt: 'desc' } },
           jobCards: { include: { parts: true }, orderBy: { createdAt: 'desc' } },
+          exchangeRequests: { orderBy: { createdAt: 'desc' } },
+          financeApplications: { orderBy: { createdAt: 'desc' } },
+          serviceBookings: { orderBy: { preferredDate: 'desc' } },
+          followUps: { orderBy: { scheduledDate: 'desc' } },
         },
       });
 

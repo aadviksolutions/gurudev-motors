@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { Fuel, Gauge, Zap, CheckCircle2, ArrowUpRight } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 
@@ -49,7 +50,7 @@ export default function VehicleCard({ vehicle, onEnquire, onTestDrive }: Vehicle
     <article className="group bg-white border border-gm-line rounded-2xl overflow-hidden shadow-sm hover:shadow-gm hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between">
       <div>
         {/* Media / Image Area */}
-        <div className="relative h-48 sm:h-52 bg-gradient-to-br from-gm-soft to-white flex items-center justify-center overflow-hidden">
+        <Link href={`/vehicles/${vehicle.id}`} className="block relative h-48 sm:h-52 bg-gradient-to-br from-gm-soft to-white flex items-center justify-center overflow-hidden cursor-pointer">
           <Image
             src={vehicle.imageUrl || '/images/bikes-1.jpeg'}
             alt={`${vehicle.brand} ${vehicle.model}`}
@@ -84,15 +85,17 @@ export default function VehicleCard({ vehicle, onEnquire, onTestDrive }: Vehicle
               {vehicle.year}
             </span>
           </div>
-        </div>
+        </Link>
 
         {/* Content Body */}
         <div className="p-5">
           <div className="flex items-start justify-between gap-2 mb-1.5">
             <div>
-              <h3 className="text-lg font-black text-gm-navy tracking-tight group-hover:text-gm-red transition-colors">
-                {vehicle.model}
-              </h3>
+              <Link href={`/vehicles/${vehicle.id}`}>
+                <h3 className="text-lg font-black text-gm-navy tracking-tight group-hover:text-gm-red transition-colors cursor-pointer">
+                  {vehicle.model}
+                </h3>
+              </Link>
               {vehicle.variant && (
                 <p className="text-xs text-gm-muted font-medium line-clamp-1">
                   {vehicle.variant}

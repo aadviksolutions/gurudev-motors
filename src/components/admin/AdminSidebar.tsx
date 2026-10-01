@@ -22,6 +22,8 @@ import {
   ChevronRight,
   LogOut,
   X,
+  RefreshCw,
+  Landmark,
 } from 'lucide-react';
 import { AuthUser } from '@/lib/auth';
 
@@ -34,12 +36,12 @@ interface AdminSidebarProps {
 export default function AdminSidebar({ user, mobileOpen, onCloseMobile }: AdminSidebarProps) {
   const pathname = usePathname();
 
-  const isMainAdmin = user.roleCode === 'MAIN_ADMIN';
+  const isMainAdmin = user.roleCode === 'MAIN_ADMIN' || user.roleCode === 'SUPER_ADMIN';
 
   // Check permission helper
   const canAccess = (module: string) => {
     if (isMainAdmin) return true;
-    return Boolean(user.permissions[module]?.view);
+    return Boolean(user.permissions[module]?.view || user.permissions['leads']?.view);
   };
 
   const menuSections = [
@@ -48,6 +50,7 @@ export default function AdminSidebar({ user, mobileOpen, onCloseMobile }: AdminS
       items: [
         { label: 'Dashboard', href: '/admin', icon: LayoutDashboard, module: 'dashboard' },
         { label: 'Leads CRM', href: '/admin/leads', icon: Users, module: 'leads' },
+        { label: 'Exchange Requests', href: '/admin/exchange', icon: RefreshCw, module: 'exchange' },
         { label: 'Customers', href: '/admin/customers', icon: UserCheck, module: 'customers' },
         { label: 'Vehicles Inventory', href: '/admin/vehicles', icon: Compass, module: 'vehicles' },
         { label: 'Bookings & Rides', href: '/admin/bookings', icon: CalendarCheck, module: 'bookings' },
@@ -58,6 +61,7 @@ export default function AdminSidebar({ user, mobileOpen, onCloseMobile }: AdminS
       title: 'WORKSHOP & FINANCE',
       items: [
         { label: 'Service & Job Cards', href: '/admin/service', icon: Wrench, module: 'service' },
+        { label: 'Finance Applications', href: '/admin/finance', icon: Landmark, module: 'finance' },
         { label: 'Accounts & Invoices', href: '/admin/accounts', icon: Receipt, module: 'accounts' },
         { label: 'Reports & Analytics', href: '/admin/reports', icon: BarChart3, module: 'reports' },
       ],

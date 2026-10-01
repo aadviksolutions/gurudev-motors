@@ -23,39 +23,58 @@ export default function EnquiryModal({ isOpen, onClose, defaultVehicle = '' }: E
     if (defaultVehicle) setVehicle(defaultVehicle);
   }, [defaultVehicle]);
 
+  const [errorMsg, setErrorMsg] = useState('');
+
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !mobile) return;
+    setErrorMsg('');
+
+    if (!name.trim()) {
+      setErrorMsg('Please enter your full name');
+      return;
+    }
+
+    const cleanMobile = mobile.replace(/[^0-9]/g, '');
+    if (!/^[6-9]\d{9}$/.test(cleanMobile)) {
+      setErrorMsg('Please enter a valid 10-digit Indian mobile number');
+      return;
+    }
 
     setSubmitting(true);
     try {
       // 1. Submit lead to CRM database
-      await fetch('/api/leads', {
+      const res = await fetch('/api/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          customerName: name,
-          mobile,
-          vehicleModel: vehicle || 'General Enquiry',
-          budget,
-          source: 'WEBSITE',
-          notes,
+          customerName: name.trim(),
+          mobile: cleanMobile,
+          vehicleModel: vehicle.trim() || 'General Enquiry',
+          budget: budget.trim() || undefined,
+          source: 'VEHICLE_ENQUIRY',
+          notes: notes.trim() || undefined,
         }),
       });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || data.error || 'Failed to submit enquiry');
+      }
 
       setSubmitted(true);
 
       // 2. Open WhatsApp with formatted enquiry
-      const text = `Hello Gurudev Motors, I am ${name}. I am interested in: ${vehicle || 'a vehicle'}. My mobile: ${mobile}. ${budget ? 'Budget: ' + budget + '. ' : ''}${notes ? notes : ''}`;
+      const text = `Hello Gurudev Motors, I am ${name.trim()}. I am interested in: ${vehicle.trim() || 'a vehicle'}. My mobile: ${cleanMobile}. ${budget ? 'Budget: ' + budget + '. ' : ''}${notes ? notes : ''}`;
       const waUrl = `https://wa.me/${CONTACT_INFO.whatsapp}?text=${encodeURIComponent(text)}`;
 
       setTimeout(() => {
         window.open(waUrl, '_blank');
       }, 400);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Enquiry error:', err);
+      setErrorMsg(err.message || 'Error submitting enquiry. Opening WhatsApp directly.');
       // Still open WhatsApp as fallback
       const text = `Hello Gurudev Motors, I am ${name}. Interested in: ${vehicle}. Mobile: ${mobile}.`;
       window.open(`https://wa.me/${CONTACT_INFO.whatsapp}?text=${encodeURIComponent(text)}`, '_blank');
@@ -118,6 +137,11 @@ export default function EnquiryModal({ isOpen, onClose, defaultVehicle = '' }: E
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-3.5">
+              {errorMsg && (
+                <p className="rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-xs font-semibold text-red-700" role="alert">
+                  {errorMsg}
+                </p>
+              )}
               <div>
                 <label className="block text-xs font-bold text-gm-navy mb-1">
                   Vehicle / Model of Interest

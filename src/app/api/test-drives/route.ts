@@ -38,6 +38,12 @@ export async function POST(req: NextRequest) {
     }
 
     const cleanMobile = mobile.replace(/[^0-9]/g, '');
+    if (!/^[6-9]\d{9}$/.test(cleanMobile)) {
+      return NextResponse.json(
+        { success: false, message: 'Please enter a valid 10-digit Indian mobile number' },
+        { status: 400 }
+      );
+    }
 
     let customer = await prisma.customer.findUnique({ where: { mobile: cleanMobile } });
     if (!customer) {
@@ -92,7 +98,8 @@ export async function POST(req: NextRequest) {
       message: 'Test drive scheduled! Our executive will call to confirm slot and location.',
     });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('Create test drive error:', error);
+    return NextResponse.json({ success: false, message: 'Unable to submit your test drive request right now.' }, { status: 500 });
   }
 }
 
