@@ -1,0 +1,38 @@
+{
+  "retrievedOn": "2026-10-09",
+  "notes": "Transparent vector logos, preserved as downloaded. TVS, Suzuki and Hero are from manufacturer websites; Honda and Bajaj are vector reproductions on Wikimedia Commons. Brand artwork remains the property of its respective owner.",
+  "assets": [
+    {
+      "brand": "TVS",
+      "file": "tvs.svg",
+      "page": "https://www.tvsmotor.com/media/press-kit",
+      "source": "https://www.tvsmotor.com/-/media/Feature/Header/TVSLogo-hr.svg"
+    },
+    {
+      "brand": "Honda",
+      "file": "honda.svg",
+      "page": "https://commons.wikimedia.org/wiki/File:Honda_Logo.svg",
+      "source": "https://upload.wikimedia.org/wikipedia/commons/7/7b/Honda_Logo.svg",
+      "attribution": "Honda Motor Co., Ltd.; vector version by Wikimedia user Yucatan. Listed as PD-textlogo."
+    },
+    {
+      "brand": "Suzuki",
+      "file": "suzuki.svg",
+      "page": "https://www.globalsuzuki.com/",
+      "source": "https://www.globalsuzuki.com/img/common/suzukiLogo.svg"
+    },
+    {
+      "brand": "Hero",
+      "file": "hero.svg",
+      "page": "https://www.heromotocorp.com/en-in.html",
+      "source": "https://www.heromotocorp.com/content/dam/hero-aem-website/brand/logo/logo.svg"
+    },
+    {
+      "brand": "Bajaj",
+      "file": "bajaj.svg",
+      "page": "https://commons.wikimedia.org/wiki/File:Bajaj_Auto_logo.svg",
+      "source": "https://upload.wikimedia.org/wikipedia/commons/3/3b/Bajaj_Auto_logo.svg",
+      "attribution": "Bajaj Auto; vector conversion from the manufacturer asset by Wikimedia user Marsupilami. Listed as PD-textlogo."
+    }
+  ]
+}

@@ -1,0 +1,112 @@
+.business-portal main,
+.business-portal main .grid > * {
+  min-width: 0;
+}
+
+@media (max-width: 1023px) {
+  .business-sidebar {
+    max-width: calc(100% - 24px);
+    visibility: hidden;
+    height: 100dvh;
+  }
+
+  .business-sidebar[data-open='true'] {
+    visibility: visible;
+  }
+
+  .business-sidebar > div:first-child {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .business-sidebar > div:first-child > div:first-child,
+  .business-sidebar > div:last-child {
+    flex-shrink: 0;
+  }
+
+  .business-sidebar-links {
+    flex: 1;
+    min-height: 0;
+    max-height: none;
+    overscroll-behavior: contain;
+  }
+
+  .business-sidebar a,
+  .business-sidebar button,
+  .business-portal header button {
+    min-height: 44px;
+  }
+
+  .business-sidebar button,
+  .business-portal header button {
+    min-width: 44px;
+    flex-shrink: 0;
+  }
+}
+
+@media (max-width: 767px) {
+  .business-portal main button,
+  .business-portal main select,
+  .business-portal main input:not([type='checkbox']):not([type='radio']) {
+    min-height: 44px;
+  }
+
+  .business-portal main button {
+    min-width: 44px;
+  }
+
+  .business-portal input:not([type='checkbox']):not([type='radio']),
+  .business-portal select,
+  .business-portal textarea {
+    min-width: 0;
+    max-width: 100%;
+    font-size: 16px;
+  }
+
+  .business-portal .business-notifications {
+    position: fixed;
+    top: 72px;
+    right: 12px;
+    left: 12px;
+    width: auto;
+    max-height: calc(100dvh - 88px);
+    margin-top: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  /* All existing portal modals share this overlay structure. */
+  .business-portal main .fixed.inset-0 {
+    margin: 0;
+    padding: 12px;
+    overflow-y: auto;
+  }
+
+  .business-portal main .fixed.inset-0 > div {
+    max-height: calc(100dvh - 24px);
+    margin-block: auto;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .business-portal main .fixed.inset-0 h3 {
+    min-width: 0;
+    font-size: 20px;
+  }
+
+  .business-portal main .fixed.inset-0 h3 + button {
+    flex-shrink: 0;
+  }
+}
+
+@media (max-width: 639px) {
+  .business-portal form .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .business-portal form .grid > * {
+    grid-column: auto;
+  }
+}

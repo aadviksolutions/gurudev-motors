@@ -1,0 +1,96 @@
+.rotating-hero {
+  overflow: clip;
+  background: #f3f6f8;
+  border-bottom: 1px solid #ccd6dd;
+}
+.hero-trial-inner {
+  padding-top: 25px;
+  padding-bottom: 24px;
+}
+.hero-trial-heading { text-align: center; }
+.hero-trial-heading .eyebrow { color: #485662; }
+.public-site .hero-trial-heading h1 { margin-top: 6px; font-size: 40px; }
+.hero-trial-heading p { margin-top: 8px; color: #43505b; font-size: 15px; }
+.hero-showcase { position: relative; max-width: 920px; margin: 8px auto 0; }
+.hero-vehicle-info { position: absolute; top: 34px; left: 8px; z-index: 2; width: 185px; }
+.hero-brand-name { font-size: 12px; font-weight: 750; color: #a71826; }
+.public-site .hero-vehicle-info h2 { font-size: 26px; margin-top: 3px; }
+.hero-vehicle-info h2 a { display: inline-flex; align-items: center; gap: 4px; }
+.hero-vehicle-info h2 a:hover { color: #a71826; }
+.hero-vehicle-info h2 svg { flex-shrink: 0; }
+.hero-vehicle-price { display: flex; flex-direction: column; gap: 3px; margin-top: 12px; }
+.hero-vehicle-price span { color: #465360; font-size: 11px; }
+.hero-vehicle-price strong { font-size: 21px; color: #202b35; }
+.hero-vehicle-facts { position: absolute; right: 0; top: 34px; width: 130px; display: grid; gap: 14px; margin: 0; padding: 0; }
+.hero-vehicle-facts > div { text-align: center; }
+.hero-vehicle-facts dt { color: #52606a; font-size: 11px; }
+.hero-vehicle-facts dd { color: #202b35; font-size: 14px; font-weight: 650; margin: 3px 0 0; }
+.hero-vehicle-stage { display: block; position: relative; height: 250px; width: 100%; overflow: clip; border-radius: 4px; }
+.hero-vehicle-stage:focus-visible { outline: 2px solid #c92232; outline-offset: 2px; }
+.hero-moving-vehicle { position: absolute; inset: 0; display: flex; justify-content: center; align-items: center; transform-origin: 50% 78%; }
+.hero-vehicle-image { display: block; width: min(650px, 68%); height: 100%; object-fit: contain; }
+.hero-phase-exit { animation: vehicle-oval-out 600ms cubic-bezier(.45,0,.75,1) both; }
+.hero-phase-enter { animation: vehicle-oval-in 650ms cubic-bezier(.16,.6,.32,1) both; }
+@keyframes vehicle-oval-out {
+  0% { transform: translate(0, 0) scale(1); opacity: 1; }
+  50% { transform: translate(28%, -10%) scale(.84); opacity: 1; }
+  100% { transform: translate(70%, -30%) scale(.55); opacity: 0; }
+}
+@keyframes vehicle-oval-in {
+  0% { transform: translate(-70%, -30%) scale(.55); opacity: 0; }
+  50% { transform: translate(-28%, -10%) scale(.84); opacity: 1; }
+  100% { transform: translate(0, 0) scale(1); opacity: 1; }
+}
+.hero-image-fallback { height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 12px; color: #4a5966; }
+.hero-playback { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 44px; }
+.hero-sample-note { font-size: 11px; color: #55616b; }
+.hero-arrow-controls { display: flex; flex-shrink: 0; gap: 4px; }
+.hero-arrow-controls button { width: 44px; height: 44px; display: grid; place-items: center; color: #25313b; border: 1px solid #c5cfd7; background: #fff; border-radius: 6px; }
+.hero-arrow-controls button:hover { background: #e4ebf0; }
+.hero-brand-choices { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); max-width: 520px; margin: 6px auto 0; border-bottom: 1px solid #c5cfd7; }
+.hero-brand-choices button { min-height: 44px; font-size: 13px; font-weight: 650; color: #4b5861; border-bottom: 3px solid transparent; }
+.hero-brand-choices button[aria-pressed='true'] { color: #ac1425; border-bottom-color: #c92232; background: #fbe8eb; }
+.hero-quick-actions { display: flex; justify-content: center; gap: 12px; margin-top: 18px; }
+.public-site .hero-quick-actions .button { min-height: 48px; font-size: 14px; }
+.public-site .hero-enquiry { border-color: #c92232; color: #a71826; background: #fff; }
+.public-site .hero-enquiry:hover { background: #fbe8eb; }
+.showroom-intro.hero-browse-tools { padding-top: 18px; }
+.hero-browse-tools .home-search { margin-top: 0; }
+@media (max-width: 900px) {
+  .hero-vehicle-info { left: 0; width: 145px; }
+  .hero-vehicle-facts { width: 110px; }
+  .public-site .hero-vehicle-info h2 { font-size: 22px; }
+}
+@media (max-width: 700px) {
+  .hero-trial-inner { padding-top: 12px; padding-bottom: 12px; }
+  .public-site .hero-trial-heading h1 { font-size: 29px; margin-top: 4px; }
+  .hero-trial-heading .eyebrow { font-size: 10px; }
+  .hero-trial-heading p { font-size: 13px; margin-top: 5px; }
+  .hero-showcase { margin-top: 8px; }
+  .hero-vehicle-info { position: static; width: 100%; min-height: 45px; display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 8px; align-items: center; }
+  .hero-brand-name { font-size: 11px; }
+  .public-site .hero-vehicle-info h2 { grid-row: 2; font-size: 21px; margin: 0; }
+  .hero-vehicle-price { grid-column: 2; grid-row: 1 / 3; margin: 0; text-align: right; }
+  .hero-vehicle-price strong { font-size: 19px; }
+  .hero-vehicle-facts { position: static; width: auto; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; margin: 0 auto 4px; padding-block: 6px; border-block: 1px solid #d5dfe5; }
+  .hero-vehicle-facts > div + div { border-left: 1px solid #d5dfe5; }
+  .hero-vehicle-facts dd { font-size: 13px; }
+  .hero-vehicle-stage { height: 155px; margin-top: 4px; }
+  .hero-vehicle-image { width: 96%; }
+  .hero-playback { gap: 6px; }
+  .hero-sample-note { max-width: 170px; font-size: 10px; line-height: 1.4; }
+  .hero-brand-choices { margin-top: 2px; }
+  .hero-brand-choices button { font-size: 12px; }
+  .hero-quick-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+  .hero-quick-actions > :first-child { grid-column: 1 / -1; }
+  .public-site .hero-quick-actions .button { min-width: 0; min-height: 44px; font-size: 12px; padding: 10px 7px; gap: 6px; }
+  .showroom-intro.hero-browse-tools { padding-block: 16px; }
+}
+@media (max-width: 360px) {
+  .hero-vehicle-stage { height: 140px; }
+  .hero-arrow-controls { gap: 0; }
+  .hero-sample-note { max-width: 140px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-moving-vehicle { animation: none; }
+}

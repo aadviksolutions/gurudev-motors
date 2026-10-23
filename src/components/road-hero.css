@@ -1,0 +1,114 @@
+.road-hero { overflow: clip; background: #fff; border-bottom: 1px solid #ccd6dd; color: #071b38; }
+.road-scene { position: relative; height: 480px; background: #d7eff8; }
+.road-backdrop { position: absolute; inset: 0; pointer-events: none; }
+.road-backdrop img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center bottom; }
+.road-heading { position: relative; z-index: 1; padding-top: 22px; text-align: center; }
+.road-heading .eyebrow { color: #234561; font-size: 10px; }
+.public-site .road-heading h1 { margin: 5px 0 0; font-size: 40px; line-height: 1.12; color: #071b38; }
+.road-heading p { margin: 8px 0 0; font-size: 15px; color: #234561; }
+.road-model { position: absolute; top: 142px; left: max(24px, calc(50% - 410px)); z-index: 2; max-width: 200px; }
+.road-brand { font-size: 12px; font-weight: 750; color: #a71826; }
+.public-site .road-model h2 { font-size: 25px; line-height: 1.2; margin: 4px 0 0; color: #071b38; }
+.road-model h2 a { display: inline-flex; align-items: center; gap: 3px; }
+.road-model h2 a:hover { color: #a71826; }
+.road-model h2 svg { flex-shrink: 0; }
+.road-price { display: flex; flex-direction: column; gap: 2px; margin-top: 12px; }
+.road-price span { font-size: 11px; color: #234561; }
+.road-price strong { font-size: 23px; line-height: 1.25; }
+.road-stage { display: block; position: absolute; inset: auto 0 0; height: 310px; overflow: clip; }
+.road-stage:focus-visible { outline: 3px solid #a71826; outline-offset: -3px; }
+.road-moving-vehicle { position: absolute; inset: 0; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 30px; }
+.road-vehicle-image { display: block; width: auto; height: auto; max-width: 520px; max-height: 290px; object-fit: contain; filter: drop-shadow(0 5px 3px #10263133); }
+.road-phase-enter { animation: road-drive-in 650ms cubic-bezier(.16,.6,.32,1) both; }
+.road-phase-exit { animation: road-drive-out 600ms cubic-bezier(.45,0,.75,1) both; }
+@keyframes road-drive-in { from { transform: translateX(-100%); } to { transform: translateX(0); } }
+@keyframes road-drive-out { from { transform: translateX(0); } to { transform: translateX(100%); } }
+.road-image-fallback { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; width: 240px; height: 170px; color: #071b38; background: #edf6f9; border-radius: 8px; }
+.road-facts { position: absolute; top: 145px; right: max(24px, calc(50% - 410px)); z-index: 1; width: 120px; margin: 0; padding: 12px 10px; display: grid; gap: 10px; background: #edf6f9ed; border-radius: 4px; }
+.road-facts > div { border-left: 1px solid #7eacbd; padding-left: 14px; }
+.road-facts dt { font-size: 11px; color: #234561; }
+.road-facts dd { margin: 3px 0 0; font-size: 14px; font-weight: 700; }
+.road-controls { display: grid; grid-template-columns: minmax(0, 520px) minmax(0, 420px); justify-content: center; align-items: center; gap: 14px 32px; padding-top: 12px; padding-bottom: 20px; }
+.road-brand-choices { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-bottom: 1px solid #dae3eb; }
+.road-brand-choices button { min-height: 44px; font-size: 13px; font-weight: 700; color: #294258; border-bottom: 3px solid transparent; }
+.road-brand-choices button[aria-pressed='true'] { color: #b3182a; border-bottom-color: #c92232; background: #fff1f3; }
+.road-playback { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.road-sample-note { max-width: 200px; font-size: 11px; color: #46596a; line-height: 1.5; }
+.road-arrows { display: flex; flex-shrink: 0; gap: 4px; }
+.road-arrows button { display: grid; place-items: center; height: 44px; width: 44px; border: 1px solid #c5d0da; border-radius: 6px; background: #fff; color: #071b38; }
+.road-arrows button:hover { background: #eaf1f6; }
+.road-hero button:focus-visible, .road-model a:focus-visible { outline: 2px solid #a71826; outline-offset: 2px; }
+.road-quick-actions { grid-column: 1 / -1; display: flex; justify-content: center; gap: 12px; }
+.public-site .road-quick-actions .button { min-height: 48px; font-size: 14px; }
+.public-site .road-enquiry { border-color: #c92232; color: #a71826; background: #fff; }
+.public-site .road-enquiry:hover { background: #fff1f3; }
+.road-scene-unavailable { background: #d7eff8; }
+.road-scene-unavailable::after { content: ''; position: absolute; bottom: 0; height: 20%; width: 100%; background: #b4bec5; pointer-events: none; }
+.road-scene-unavailable .road-stage { z-index: 1; }
+@media (min-width: 1101px) and (max-width: 1439px) {
+  .road-scene { height: calc(100vw / 3); }
+  .road-model { left: calc(50% - 330px); top: 126px; }
+  .road-facts { right: calc(50% - 330px); top: 128px; }
+  .road-stage { height: 250px; }
+  .road-vehicle-image { max-width: 420px; max-height: 220px; }
+}
+@media (max-width: 1100px) {
+  .road-scene { height: auto; display: grid; grid-template-areas: 'heading' 'model' 'stage' 'facts'; }
+  .road-heading { grid-area: heading; padding-top: 16px; }
+  .road-model { grid-area: model; position: relative; top: auto; left: auto; width: calc(100% - 40px); max-width: 650px; min-height: 58px; margin: 15px auto 8px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .road-price { text-align: right; margin: 0; }
+  .road-stage { grid-area: stage; position: relative; height: calc(100vw * .52); }
+  .road-backdrop { grid-area: stage; }
+  .road-backdrop img { object-fit: cover; }
+  .road-moving-vehicle { padding-bottom: 30px; }
+  .road-vehicle-image { max-width: 400px; max-height: 245px; }
+  .road-facts { grid-area: facts; position: relative; inset: auto; width: 100%; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; padding: 9px 20px; background: #edf6f9; border-bottom: 1px solid #ccdde5; border-radius: 0; }
+  .road-facts > div { text-align: center; padding: 0 8px; }
+  .road-facts > div:first-child { border: 0; }
+  .road-controls { max-width: 690px; grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  .road-playback { margin-block: 3px; }
+  .road-sample-note { max-width: none; }
+  .road-quick-actions { margin-top: 8px; }
+}
+@media (min-width: 901px) and (max-width: 1100px) {
+  .road-stage { height: calc(100vw / 3); }
+}
+@media (min-width: 700px) and (max-width: 1100px) {
+  .road-controls { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px 20px; }
+  .road-playback { margin: 0; }
+  .road-sample-note { max-width: 170px; }
+  .road-quick-actions { margin-top: 0; }
+}
+@media (max-width: 600px) {
+  .road-heading { padding-top: 8px; }
+  .road-heading .eyebrow { font-size: 9px; }
+  .public-site .road-heading h1 { font-size: 29px; margin-top: 4px; }
+  .road-heading p { font-size: 12px; margin-top: 3px; }
+  .road-model { width: calc(100% - 32px); min-height: 49px; margin: 8px auto 4px; }
+  .road-brand { font-size: 11px; }
+  .public-site .road-model h2 { font-size: 21px; margin-top: 1px; }
+  .road-price strong { font-size: 20px; }
+  .road-price span { font-size: 10px; }
+  .road-stage { height: max(205px, calc(100vw * .58)); }
+  .road-moving-vehicle { padding-bottom: 22px; }
+  .road-vehicle-image { max-width: 72%; max-height: 165px; }
+  .road-facts { padding: 7px 12px; }
+  .road-facts dt { font-size: 10px; }
+  .road-facts dd { font-size: 12px; margin-top: 1px; }
+  .road-controls { gap: 2px; padding-top: 4px; padding-bottom: 8px; }
+  .road-brand-choices button { font-size: 12px; }
+  .road-sample-note { max-width: 180px; font-size: 10px; }
+  .road-quick-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 3px; }
+  .road-quick-actions > :first-child { grid-column: 1 / -1; }
+  .public-site .road-quick-actions .button { min-width: 0; min-height: 44px; padding: 10px 7px; font-size: 12px; gap: 5px; }
+  .road-image-fallback { width: 180px; height: 130px; font-size: 12px; }
+}
+@media (max-width: 360px) {
+  .road-stage { height: 180px; }
+  .road-vehicle-image { max-height: 145px; }
+  .road-sample-note { max-width: 145px; }
+  .road-arrows { gap: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .road-moving-vehicle { animation: none; transform: none; }
+}

@@ -1,0 +1,41 @@
+{
+  "purpose": "Local design preview only. Manufacturer product images do not confirm dealership stock. Review reuse rights and current models before production use.",
+  "retrieved": "2026-10-09",
+  "assets": [
+    {
+      "file": "tvs-raider-side.webp",
+      "brand": "TVS",
+      "sourcePage": "https://www.tvsmotor.com/tvs-raider",
+      "sourceImage": "https://www.tvsmotor.com/tvs-raider/-/media/Brand-Pages-Webp/Raider/RevisedRaider360Images/DISC/RED/769x480/1.webp",
+      "processing": "Original transparent manufacturer image"
+    },
+    {
+      "file": "honda-activa.png",
+      "brand": "Honda",
+      "sourcePage": "https://www.honda2wheelersindia.com/scooter/activa110",
+      "sourceImage": "https://edge.sitecorecloud.io/hondamotorc388f-hmsi8ece-prodb777-e813/media/Project/HONDA2WI/honda2wheelersindia/new_asset_compressed/Scooter/activa110/ProductEMICalculator/EMI-Calculator.png?h=638&iar=0&w=1038",
+      "processing": "Original transparent manufacturer image"
+    },
+    {
+      "file": "suzuki-access-cutout.png",
+      "brand": "Suzuki",
+      "sourcePage": "https://www.suzukimotorcycle.co.in/product-details/all-new-access-125-bluetooth-enabled",
+      "sourceImage": "https://s3.ap-south-1.amazonaws.com/suzuki-website-s3/public-live/uploads/color-images/original/370-01-2025-Suzuki-Access-Website_Absolute-Side_620x428pix-02.png",
+      "processing": "White background removed using image generation; original retained as suzuki-access-side.png. Review product details before publication."
+    },
+    {
+      "file": "hero-splendor.png",
+      "brand": "Hero",
+      "sourcePage": "https://www.heromotocorp.com/en-in/motorcycles/splendor-plus.html",
+      "sourceImage": "https://www.heromotocorp.com/en-in/motorcycles/media_1da9cab4068115254f3931a283f57bedbfdbb2d30.png?format=png&optimize=medium&width=1000",
+      "processing": "Original transparent manufacturer image"
+    },
+    {
+      "file": "bajaj-pulsar-side.webp",
+      "brand": "Bajaj",
+      "sourcePage": "https://www.bajajauto.com/bikes/pulsar/pulsar-n160",
+      "sourceImage": "https://www.bajajauto.com/assets/pulsar-n160/first_variant/red/0001.webp",
+      "processing": "Original transparent manufacturer image, near-side view"
+    }
+  ]
+}

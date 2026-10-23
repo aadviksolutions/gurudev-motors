@@ -1,0 +1,41 @@
+{
+  "generatedWith": "Built-in image_gen",
+  "purpose": "Local frontend design preview. Generated scenery and Bajaj cutout are illustrations, not confirmed inventory photography.",
+  "references": [
+    "User-provided Ghadi Chowk photograph",
+    "User-provided Vivekananda-Sarovar-Raipur.jpg",
+    "Approved desktop hero concept"
+  ],
+  "assets": [
+    {
+      "file": "raipur-road-wide.webp",
+      "prompt": "Use case: stylized-concept. Create a production website BACKGROUND ART asset, landscape 3:1 composition, ideally 2400x800. Reference 1 is the approved visual style and landmark arrangement, NOT a UI to reproduce. References 2 and 3 show real Raipur landmarks. Illustrate a bright, clean Raipur scene: cream-and-maroon Ghadi Chowk clock tower near the LEFT edge; seated orange Vivekananda statue with grey ribbed backing, green palms and turquoise lake near RIGHT edge. Gentle illustration with realistic recognizable architecture, clean natural daylight, pale cyan sky, green trees, subtle distant city skyline. Keep CENTRAL 50% mostly empty pale sky and low distant foliage for a separately rendered motorcycle. Foreground is a straight level grey asphalt road across full width; curb at 77% image height and road fills bottom 23%, white horizontal dashed lane line at 95%. Both landmarks fully visible with room at edges and tops. Clock tower about 65% of canvas height, statue plus palms 55%, not monumental compared with road. IMPORTANT: ONLY scenery. NO vehicle, motorcycle, person on the road, logo, interface, heading, buttons, numbers outside clock face, or text. No border, gradient blobs or cards. Match calm cyan/green landmark illustration in approved reference."
+    },
+    {
+      "file": "raipur-road-mobile.webp",
+      "prompt": "Use case: precise-object-edit. Adapt reference scenery into a mobile website background, 4:3 landscape aspect. This is the BACKGROUND ONLY, no UI or vehicle. Preserve the illustrated Raipur Ghadi Chowk clock tower on LEFT edge and seated orange Vivekananda statue, grey ribbed backing, palms and lake on RIGHT edge. Re-compose rather than crop so BOTH complete landmarks are visible in a narrow screen. Clock tower in leftmost 23%, statue and palms in rightmost 27%, central 50% open pale blue sky, distant low foliage and lake. Landmarks smaller than reference, occupying approximately upper 65% of the scene. Road is straight level asphalt across bottom 23%; curb at 77%, lane dash at 94% height. Empty centre will hold a separate motorcycle. The tower and statue remain behind it at the sides. Same bright cyan, green, cream and orange illustration style as reference. No vehicle, text, interface, border, button or logo."
+    },
+    {
+      "file": "bajaj-pulsar-right.webp",
+      "source": "../vehicles/bajaj-pulsar-side.webp",
+      "prompt": "Use case: precise-object-edit. Edit target is this red Bajaj Pulsar motorcycle product cutout. Create the same red and black motorcycle in clean RIGHT-FACING SIDE PROFILE. Front wheel, headlight and handlebars on RIGHT, tail and rear wheel on LEFT. Both wheel bottom edges sit at exactly same horizontal baseline. Show entire motorcycle including mirrors, tires and number-plate bracket, no rider. Preserve the recognizable model design, red tank and black frame, wheels and seat; retain normal readable brand and model markings, NEVER mirrored lettering. Output a photorealistic sample product cutout on genuine transparent alpha background, no floor, no scenery, no checkerboard printed into image. Tight but comfortable framing with 4% padding. This is for a dealership design sample, not an exact inventory listing."
+    },
+    {
+      "file": "tvs-raider-right.webp",
+      "source": "../vehicles/tvs-raider-side.webp"
+    },
+    {
+      "file": "honda-activa-right.webp",
+      "source": "../vehicles/honda-activa.png"
+    },
+    {
+      "file": "suzuki-access-right.webp",
+      "source": "../vehicles/suzuki-access-cutout.png"
+    },
+    {
+      "file": "hero-splendor-right.webp",
+      "source": "../vehicles/hero-splendor.png"
+    }
+  ],
+  "optimization": "Sharp format conversion, resize and transparent-margin trim only; original catalog files unchanged."
+}
