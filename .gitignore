@@ -47,3 +47,5 @@ dev.db-journal
 /extract_mockup_images.js
 /IMPLEMENTATION_REPORT.md
 /PROJECT_AUDIT.md
+
+.vercel
