@@ -244,7 +244,17 @@ export async function getPublicVehicle(
   const response = await fetch(`/api/vehicles/${encodeURIComponent(id)}`, {
     signal,
   });
-  if (response.status === 404) return null;
+  if (response.status === 404) {
+    const sample = SAMPLE_VEHICLES.find((item) => item.id === id);
+    return sample
+      ? {
+          vehicle: sample,
+          similarVehicles: SAMPLE_VEHICLES.filter(
+            (item) => item.id !== id && item.category === sample.category,
+          ).slice(0, 4),
+        }
+      : null;
+  }
   if (!response.ok)
     throw new Error('We could not load this vehicle. Please try again.');
   const data = await response.json();

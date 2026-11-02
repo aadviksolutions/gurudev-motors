@@ -10,9 +10,18 @@ import { formatCurrency } from '@/lib/utils';
 import { getRoadSlides, initialRoadState, roadReducer, ROAD_ENTER_MS, ROAD_EXIT_MS, ROAD_HOLD_MS, ROAD_IMAGE_SIZES } from '@/lib/road-hero';
 import './road-hero.css';
 
+const fallbackRoadSlides: ShowroomVehicle[] = [
+  { id: 'hero-tvs', brand: 'TVS', model: 'Raider 125', category: 'NEW', year: 2026, fuel: 'Petrol', transmission: 'Manual', km: 0, colour: 'Yellow', price: 97000, stockStatus: 'IN_STOCK', imageUrl: '/images/hero/tvs-raider-right.webp' },
+  { id: 'hero-honda', brand: 'Honda', model: 'Activa 6G', category: 'NEW', year: 2026, fuel: 'Petrol', transmission: 'Automatic', km: 0, colour: 'Blue', price: 82500, stockStatus: 'IN_STOCK', imageUrl: '/images/hero/honda-activa-right.webp' },
+  { id: 'hero-suzuki', brand: 'Suzuki', model: 'Access 125', category: 'NEW', year: 2026, fuel: 'Petrol', transmission: 'Automatic', km: 0, colour: 'Blue', price: 88900, stockStatus: 'IN_STOCK', imageUrl: '/images/hero/suzuki-access-right.webp' },
+  { id: 'hero-hero', brand: 'Hero', model: 'Splendor Plus', category: 'NEW', year: 2026, fuel: 'Petrol', transmission: 'Manual', km: 0, colour: 'Black', price: 77000, stockStatus: 'IN_STOCK', imageUrl: '/images/hero/hero-splendor-right.webp' },
+  { id: 'hero-bajaj', brand: 'Bajaj', model: 'Pulsar 125', category: 'NEW', year: 2026, fuel: 'Petrol', transmission: 'Manual', km: 0, colour: 'Red', price: 92000, stockStatus: 'IN_STOCK', imageUrl: '/images/hero/bajaj-pulsar-right.webp' },
+];
+
 export default function RoadHero({ vehicles }: { vehicles: ShowroomVehicle[] }) {
   const { openEnquiry } = useModal();
-  const slides = useMemo(() => getRoadSlides(vehicles), [vehicles]);
+  const calculatedSlides = useMemo(() => getRoadSlides(vehicles), [vehicles]);
+  const slides = calculatedSlides.length > 0 ? calculatedSlides : fallbackRoadSlides;
   const [{ index, phase, paused }, dispatch] = useReducer(roadReducer, initialRoadState);
   const [hovered, setHovered] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(true);

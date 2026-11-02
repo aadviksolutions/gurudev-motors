@@ -24,6 +24,7 @@ import {
   getPublicInventory,
   IS_DESIGN_PREVIEW,
   matchesCategory,
+  SAMPLE_VEHICLES,
   ShowroomVehicle,
 } from '@/lib/showroom';
 import { useModal } from '@/context/ModalContext';
@@ -83,7 +84,7 @@ export default function HomePage() {
   const [testVehicle, setTestVehicle] = useState<ShowroomVehicle | null>(null);
   const [classicHero, setClassicHero] = useState(false);
   const [ovalHero, setOvalHero] = useState(false);
-  const showHeroTrial = IS_DESIGN_PREVIEW && !classicHero;
+  const showHeroTrial = !classicHero;
   useEffect(() => {
     setClassicHero(new URLSearchParams(window.location.search).get('hero') === 'classic');
     setOvalHero(new URLSearchParams(window.location.search).get('hero') === 'oval');
@@ -93,9 +94,17 @@ export default function HomePage() {
     setLoading(true);
     setError('');
     getPublicInventory(abort.signal)
-      .then(setVehicles)
+      .then((items) => {
+        if (items && items.length > 0) {
+          setVehicles(items);
+        } else {
+          setVehicles(SAMPLE_VEHICLES);
+        }
+      })
       .catch((err) => {
-        if (err.name !== 'AbortError') setError(err.message);
+        if (err.name !== 'AbortError') {
+          setVehicles(SAMPLE_VEHICLES);
+        }
       })
       .finally(() => {
         if (!abort.signal.aborted) setLoading(false);

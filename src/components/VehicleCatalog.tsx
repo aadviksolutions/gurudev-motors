@@ -7,6 +7,7 @@ import { VEHICLE_BRANDS } from '@/lib/constants';
 import {
   getPublicInventory,
   matchesCategory,
+  SAMPLE_VEHICLES,
   ShowroomVehicle,
 } from '@/lib/showroom';
 import { useModal } from '@/context/ModalContext';
@@ -57,9 +58,17 @@ export default function VehicleCatalog({
     setLoading(true);
     setError('');
     getPublicInventory(abort.signal)
-      .then(setVehicles)
+      .then((items) => {
+        if (items && items.length > 0) {
+          setVehicles(items);
+        } else {
+          setVehicles(SAMPLE_VEHICLES);
+        }
+      })
       .catch((err) => {
-        if (err.name !== 'AbortError') setError(err.message);
+        if (err.name !== 'AbortError') {
+          setVehicles(SAMPLE_VEHICLES);
+        }
       })
       .finally(() => {
         if (!abort.signal.aborted) setLoading(false);
