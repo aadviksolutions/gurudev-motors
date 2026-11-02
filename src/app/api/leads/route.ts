@@ -64,7 +64,11 @@ export async function GET(req: NextRequest) {
       include: {
         assignedTo: { select: { id: true, name: true, email: true, phone: true } },
         customer: true,
-        followUps: { orderBy: { scheduledDate: 'desc' }, take: 5 },
+        followUps: {
+          include: { user: { select: { id: true, name: true } } },
+          orderBy: { createdAt: 'desc' },
+          take: 20,
+        },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -255,28 +259,43 @@ export async function PUT(req: NextRequest) {
     }
     if (notes !== undefined) updateData.notes = notes;
 
-    const updatedLead = await prisma.lead.update({
-      where: { id },
-      data: updateData,
-      include: {
-        assignedTo: { select: { id: true, name: true, email: true } },
-        customer: true,
-      },
-    });
-
     // Record follow-up entry if followUpDate was set or followUpNotes provided
     if (followUpDate || followUpNotes) {
+      // Mark prior pending follow-ups for this lead as completed
+      await prisma.followUp.updateMany({
+        where: { leadId: existingLead.id, status: 'PENDING' },
+        data: { status: 'COMPLETED', completedDate: new Date() },
+      });
+
+      const nextFollowUpTarget = followUpDate
+        ? new Date(followUpDate)
+        : new Date(Date.now() + 24 * 3600 * 1000);
+
       await prisma.followUp.create({
         data: {
           leadId: existingLead.id,
           customerId: existingLead.customerId,
-          scheduledDate: followUpDate ? new Date(followUpDate) : new Date(),
-          notes: followUpNotes || notes || `Follow-up updated to status: ${status || existingLead.status}`,
+          scheduledDate: nextFollowUpTarget,
+          notes: followUpNotes || (typeof notes === 'string' ? notes.split('\n').pop() : 'Follow-up logged'),
           userId: user.id,
           status: 'PENDING',
         },
       });
     }
+
+    const updatedLead = await prisma.lead.update({
+      where: { id },
+      data: updateData,
+      include: {
+        assignedTo: { select: { id: true, name: true, email: true, phone: true } },
+        customer: true,
+        followUps: {
+          include: { user: { select: { id: true, name: true } } },
+          orderBy: { createdAt: 'desc' },
+          take: 20,
+        },
+      },
+    });
 
     await logAudit({
       user,

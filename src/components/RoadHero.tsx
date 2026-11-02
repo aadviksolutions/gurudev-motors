@@ -159,7 +159,7 @@ export default function RoadHero({ vehicles }: { vehicles?: ShowroomVehicle[] } 
         </picture>}
         <header className="road-heading site-container">
           <span className="eyebrow"><span className="red-tick" /> YOUR LOCAL SHOWROOM IN RAIPUR</span>
-          <h1>Gurudev Motors<span className="red-period">.</span></h1>
+          <h1>Gurudev Motors</h1>
           <p>New bikes. More choice. Easy monthly payments.</p>
         </header>
         <div className="road-model" aria-live={paused || reducedMotion ? 'polite' : 'off'} aria-atomic="true">

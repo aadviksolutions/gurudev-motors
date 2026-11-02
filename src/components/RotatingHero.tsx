@@ -81,7 +81,7 @@ export default function RotatingHero({ vehicles }: { vehicles?: ShowroomVehicle[
       <div className="site-container hero-trial-inner">
         <div className="hero-trial-heading">
           <span className="eyebrow"><span className="red-tick" /> YOUR LOCAL SHOWROOM IN RAIPUR</span>
-          <h1>Gurudev Motors<span className="red-period">.</span></h1>
+          <h1>Gurudev Motors</h1>
           <p>New bikes. More choice. Easy monthly payments.</p>
         </div>
 

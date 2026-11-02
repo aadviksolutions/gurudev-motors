@@ -131,7 +131,7 @@ export default function HomePage() {
                 RAIPUR
               </span>
               <h1>
-                Gurudev Motors<span className="red-period">.</span>
+                Gurudev Motors
               </h1>
               <p>Find your ride. We’ll take care of the rest.</p>
             </div>
