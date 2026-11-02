@@ -80,7 +80,7 @@ export default function VehicleDetailPage() {
     );
   const name = vehicle.brand + ' ' + vehicle.model;
   const category = categoryLabel(vehicle);
-  const isUsed = category === 'Pre-owned' || category === 'Used car';
+  const isUsed = category === 'Pre-owned';
   const available = vehicle.stockStatus === 'IN_STOCK';
   const price = vehicle.offerPrice || vehicle.price;
   const enquire = () => openEnquiry(name, 'VEHICLE_DETAILS');

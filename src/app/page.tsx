@@ -6,7 +6,6 @@ import {
   ArrowRight,
   ArrowUpRight,
   Bike,
-  CarFront,
   ChevronRight,
   CircleHelp,
   Clock3,
@@ -63,12 +62,6 @@ const categories = [
     value: 'ELECTRIC',
     icon: Zap,
     href: '/vehicles/electric',
-  },
-  {
-    label: 'Used cars',
-    value: 'USED_CAR',
-    icon: CarFront,
-    href: '/vehicles/used-cars',
   },
 ];
 export default function HomePage() {
@@ -230,7 +223,6 @@ export default function HomePage() {
               { label: 'New', value: 'NEW' },
               { label: 'Used bikes', value: 'PRE_OWNED' },
               { label: 'Electric', value: 'ELECTRIC' },
-              { label: 'Used cars', value: 'USED_CAR' },
             ].map((item) => (
               <button
                 key={item.value}

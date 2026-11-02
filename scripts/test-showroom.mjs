@@ -57,13 +57,13 @@ test('five new-brand samples have local images and recorded sources', () => {
     assert.ok(existsSync(new URL('../public' + vehicle.imageUrl, import.meta.url)), brand);
     assert.ok(sources.assets.some((asset) => vehicle.imageUrl.endsWith('/' + asset.file)), brand);
   }
-  assert.equal(api.SAMPLE_VEHICLES.find((item) => item.id === 'draft-swift').imageUrl, undefined);
+  assert.equal(api.SAMPLE_VEHICLES.find((item) => item.id === 'draft-swift'), undefined);
 });
 test('preview inventory and submissions never call a backend', async () => {
   const api = showroom(previewEnv, () => {
     throw new Error('Unexpected backend call');
   });
-  assert.equal((await api.getPublicInventory()).length, 8);
+  assert.equal((await api.getPublicInventory()).length, 7);
   assert.equal(
     (await api.getPublicVehicle('draft-raider')).vehicle.brand,
     'TVS',
@@ -103,7 +103,7 @@ test('Vercel Preview requires opt-in and never calls a backend in sample mode', 
     () => { throw new Error('Preview must not call a backend'); },
   );
   assert.equal(api.IS_DESIGN_PREVIEW, true);
-  assert.equal((await api.getPublicInventory()).length, 8);
+  assert.equal((await api.getPublicInventory()).length, 7);
   assert.equal((await api.getPublicVehicle('draft-raider')).vehicle.brand, 'TVS');
   assert.equal((await api.submitPublicRequest('/api/leads', { customerName: 'Test' })).preview, true);
 });
@@ -151,12 +151,10 @@ test('empty inventory is valid but HTTP and malformed inventory fail', async () 
   }));
   await assert.rejects(malformed.getPublicInventory(), /could not load/);
 });
-test('category matching separates used cars, scooters and electric inventory', () => {
+test('category matching separates scooters and electric inventory without cars', () => {
   const api = showroom(previewEnv, () => {});
-  const car = api.SAMPLE_VEHICLES.find((v) => v.id === 'draft-swift');
-  const ev = api.SAMPLE_VEHICLES.find((v) => v.id === 'draft-iqube');
-  assert.equal(api.matchesCategory(car, 'USED_CAR'), true);
-  assert.equal(api.matchesCategory(car, 'PRE_OWNED'), false);
+  const ev = api.SAMPLE_VEHICLES.find((v) => v.category === 'ELECTRIC');
+  assert.equal(api.SAMPLE_VEHICLES.some((v) => /car/i.test(v.vehicleType || '')), false);
   assert.equal(api.matchesCategory(ev, 'ELECTRIC'), true);
   assert.equal(api.matchesCategory(ev, 'NEW'), false);
   assert.equal(

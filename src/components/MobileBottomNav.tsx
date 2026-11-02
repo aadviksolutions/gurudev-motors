@@ -14,7 +14,6 @@ export default function MobileBottomNav({
       ![
         '/vehicles/new',
         '/vehicles/pre-owned',
-        '/vehicles/used-cars',
         '/vehicles/electric',
       ].includes(path))
   )

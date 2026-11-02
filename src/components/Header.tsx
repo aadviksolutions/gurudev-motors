@@ -11,7 +11,6 @@ import {
   Phone,
   ArrowRight,
   Bike,
-  CarFront,
   Zap,
   Wrench,
   RefreshCw,
@@ -31,7 +30,6 @@ const links = [
 ];
 const moreLinks = [
   { label: 'Electric vehicles', href: '/vehicles/electric', icon: Zap },
-  { label: 'Used cars', href: '/vehicles/used-cars', icon: CarFront },
   { label: 'Exchange', href: '/exchange', icon: RefreshCw },
   { label: 'Offers', href: '/offers', icon: Tag },
   { label: 'About us', href: '/about', icon: CircleHelp },

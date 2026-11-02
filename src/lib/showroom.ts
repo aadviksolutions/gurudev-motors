@@ -135,20 +135,20 @@ export const SAMPLE_VEHICLES: ShowroomVehicle[] = [
   },
   {
     ...base,
-    id: 'draft-iqube',
-    brand: 'TVS',
-    model: 'iQube',
-    variant: 'Electric scooter',
+    id: 'draft-eluna',
+    brand: 'Kinetic Green',
+    model: 'E-Luna Prime',
+    variant: 'High Speed Electric',
     category: 'ELECTRIC',
     vehicleType: 'Electric Scooter',
     fuel: 'Electric',
     transmission: 'Automatic',
-    price: 112000,
-    emi: 3700,
-    colour: 'White',
+    price: 76990,
+    emi: 2100,
+    colour: 'Blue',
     description:
-      'Make room for electric in your daily routine. Discuss charging, variants and a test ride.',
-    features: 'Electric powertrain,Under-seat storage,Digital display',
+      'The electric revolution of an Indian legend. 110 km range per charge, portable battery and rugged frame for city riding.',
+    features: 'Electric powertrain,Portable battery,Digital display',
   },
   {
     ...base,
@@ -168,30 +168,9 @@ export const SAMPLE_VEHICLES: ShowroomVehicle[] = [
     description:
       'Sample pre-owned listing. Actual condition and documentation require showroom confirmation.',
   },
-  {
-    ...base,
-    id: 'draft-swift',
-    brand: 'Suzuki',
-    model: 'Swift',
-    variant: 'Pre-owned hatchback',
-    category: 'USED_CAR',
-    vehicleType: 'Car',
-    year: 2024,
-    km: 24000,
-    price: 575000,
-    featured: false,
-    ownerCount: 1,
-    description:
-      'Sample used-car listing. Actual stock, condition and terms require showroom confirmation.',
-  },
 ];
 
 export function categoryLabel(vehicle: ShowroomVehicle) {
-  if (
-    vehicle.category === 'USED_CAR' ||
-    /car|hatchback|sedan|suv/i.test(vehicle.vehicleType || '')
-  )
-    return 'Used car';
   if (vehicle.category === 'PRE_OWNED') return 'Pre-owned';
   if (vehicle.category === 'ELECTRIC' || vehicle.fuel === 'Electric')
     return 'Electric';
@@ -200,14 +179,13 @@ export function categoryLabel(vehicle: ShowroomVehicle) {
 
 export function matchesCategory(vehicle: ShowroomVehicle, category: string) {
   if (category === 'ALL') return true;
-  if (category === 'USED_CAR') return categoryLabel(vehicle) === 'Used car';
   if (category === 'ELECTRIC') return categoryLabel(vehicle) === 'Electric';
   if (category === 'SCOOTER')
     return (
       /scooter/i.test(vehicle.vehicleType || '') &&
       vehicle.category !== 'PRE_OWNED'
     );
-  return vehicle.category === category && categoryLabel(vehicle) !== 'Used car';
+  return vehicle.category === category;
 }
 
 export async function getPublicInventory(

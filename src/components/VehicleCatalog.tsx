@@ -22,7 +22,6 @@ const categories = [
   { value: 'SCOOTER', label: 'Scooters' },
   { value: 'PRE_OWNED', label: 'Pre-owned' },
   { value: 'ELECTRIC', label: 'Electric' },
-  { value: 'USED_CAR', label: 'Used cars' },
 ];
 export default function VehicleCatalog({
   category: initialCategory = 'ALL',
@@ -115,7 +114,7 @@ export default function VehicleCatalog({
           ? 'A fresh start. Pre-owned.'
           : initialCategory === 'ELECTRIC'
             ? 'Your next ride, electric.'
-            : 'Find your next used car.';
+            : 'Two-wheeler collection.';
   const filterCount = Number(brand !== 'ALL') + Number(budget !== 'ALL');
   const Filters = (
     <div className="catalog-filters">

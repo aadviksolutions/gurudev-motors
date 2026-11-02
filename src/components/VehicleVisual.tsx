@@ -1,6 +1,6 @@
 'use client';
 import Image from 'next/image';
-import { Bike, CarFront, Zap } from 'lucide-react';
+import { Bike, Zap } from 'lucide-react';
 import { useState } from 'react';
 import {
   ShowroomVehicle,
@@ -16,9 +16,8 @@ export default function VehicleVisual({
   imageUrl?: string;
   priority?: boolean;
 }) {
-  const isCar = categoryLabel(vehicle) === 'Used car';
   const isElectric = categoryLabel(vehicle) === 'Electric';
-  const Icon = isCar ? CarFront : isElectric ? Zap : Bike;
+  const Icon = isElectric ? Zap : Bike;
   const [failedSource, setFailedSource] = useState('');
   const source = imageUrl || vehicle.imageUrl;
   if (source && failedSource !== source)
@@ -37,7 +36,7 @@ export default function VehicleVisual({
     <div
       className={
         'vehicle-placeholder ' +
-        (isElectric ? 'electric-placeholder' : isCar ? 'car-placeholder' : '')
+        (isElectric ? 'electric-placeholder' : '')
       }
       aria-label={vehicle.brand + ' ' + vehicle.model + ' image placeholder'}
     >

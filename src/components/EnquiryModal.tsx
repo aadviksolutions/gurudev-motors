@@ -125,7 +125,6 @@ export default function EnquiryModal({
             {[
               'New bike or scooter',
               'Pre-owned two-wheeler',
-              'Used car',
               'Electric vehicle',
               'Finance and EMI',
               'Exchange my vehicle',

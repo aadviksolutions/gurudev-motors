@@ -31,7 +31,6 @@ export default function Footer() {
             <h3>Find your ride</h3>
             <Link href="/vehicles/new">New vehicles</Link>
             <Link href="/vehicles/pre-owned">Used bikes</Link>
-            <Link href="/vehicles/used-cars">Used cars</Link>
             <Link href="/vehicles/electric">Electric vehicles</Link>
           </div>
           <div>

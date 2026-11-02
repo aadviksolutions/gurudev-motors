@@ -19,7 +19,7 @@ export default function VehicleCard({
   onTestDrive?: (vehicle: VehicleData) => void;
 }) {
   const category = categoryLabel(vehicle);
-  const isUsed = category === 'Pre-owned' || category === 'Used car';
+  const isUsed = category === 'Pre-owned';
   const electric = category === 'Electric';
   const price = vehicle.offerPrice || vehicle.price;
   const available = vehicle.stockStatus === 'IN_STOCK';
