@@ -12,6 +12,29 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  // Restore sidebar state from localStorage on client mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('gm-admin-sidebar-collapsed');
+      if (saved !== null) {
+        setSidebarCollapsed(saved === 'true');
+      }
+    } catch {
+      // LocalStorage access fallback
+    }
+  }, []);
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('gm-admin-sidebar-collapsed', String(next));
+      } catch {}
+      return next;
+    });
+  };
 
   useEffect(() => {
     async function checkAuth() {
@@ -56,19 +79,27 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <AdminSidebar
           user={user}
           mobileOpen={mobileSidebarOpen}
+          collapsed={sidebarCollapsed}
           onCloseMobile={() => setMobileSidebarOpen(false)}
+          onToggleCollapse={toggleSidebar}
         />
       </div>
 
-      <div className="lg:pl-64 print:pl-0 flex flex-col min-h-screen print:min-h-0">
+      <div
+        className={`print:pl-0 flex flex-col min-h-screen print:min-h-0 transition-[padding] duration-300 ease-in-out ${
+          sidebarCollapsed ? 'lg:pl-0' : 'lg:pl-64'
+        }`}
+      >
         <div className="print:hidden">
           <AdminHeader
             user={user}
             mobileSidebarOpen={mobileSidebarOpen}
+            sidebarCollapsed={sidebarCollapsed}
             onOpenMobileSidebar={() => setMobileSidebarOpen(true)}
+            onToggleSidebar={toggleSidebar}
           />
         </div>
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 print:p-0 print:m-0">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 print:p-0 print:m-0 transition-all duration-300">
           {children}
         </main>
       </div>

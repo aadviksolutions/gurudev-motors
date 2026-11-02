@@ -25,16 +25,25 @@ import {
   X,
   RefreshCw,
   Landmark,
+  PanelLeftClose,
 } from 'lucide-react';
 import { AuthUser } from '@/lib/auth';
 
 interface AdminSidebarProps {
   user: AuthUser;
   mobileOpen: boolean;
+  collapsed?: boolean;
   onCloseMobile: () => void;
+  onToggleCollapse?: () => void;
 }
 
-export default function AdminSidebar({ user, mobileOpen, onCloseMobile }: AdminSidebarProps) {
+export default function AdminSidebar({
+  user,
+  mobileOpen,
+  collapsed = false,
+  onCloseMobile,
+  onToggleCollapse,
+}: AdminSidebarProps) {
   const pathname = usePathname();
 
   const isMainAdmin = user.roleCode === 'MAIN_ADMIN' || user.roleCode === 'SUPER_ADMIN';
@@ -95,13 +104,16 @@ export default function AdminSidebar({ user, mobileOpen, onCloseMobile }: AdminS
         id="business-sidebar"
         aria-label="Business navigation"
         data-open={mobileOpen}
-        className={`business-sidebar fixed top-0 bottom-0 left-0 z-50 w-64 bg-[#031330] text-slate-300 border-r border-white/10 flex flex-col justify-between transition-transform duration-300 lg:translate-x-0 ${
-          mobileOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        data-collapsed={collapsed}
+        className={`business-sidebar fixed top-0 bottom-0 left-0 z-50 w-64 bg-[#031330] text-slate-300 border-r border-white/10 flex flex-col justify-between transition-all duration-300 ease-in-out ${
+          collapsed
+            ? '-translate-x-full lg:-translate-x-full opacity-0 pointer-events-none'
+            : 'translate-x-0 lg:translate-x-0 opacity-100'
+        } ${mobileOpen ? '!translate-x-0 !opacity-100 !pointer-events-auto' : ''}`}
       >
         <div>
           {/* Logo / Brand header */}
-          <div className="h-16 px-6 flex items-center justify-between border-b border-white/10">
+          <div className="h-16 px-5 flex items-center justify-between border-b border-white/10">
             <Link href="/admin" className="flex items-center gap-2">
               <span className="h-8 w-auto px-1.5 rounded-lg bg-white flex items-center justify-center shadow">
                 <Image
@@ -122,13 +134,31 @@ export default function AdminSidebar({ user, mobileOpen, onCloseMobile }: AdminS
                 </span>
               </div>
             </Link>
-            <button
-              onClick={onCloseMobile}
-              aria-label="Close business navigation"
-              className="p-1 text-slate-400 hover:text-white lg:hidden"
-            >
-              <X className="w-5 h-5" />
-            </button>
+
+            <div className="flex items-center gap-1">
+              {/* Desktop collapse button */}
+              {onToggleCollapse && (
+                <button
+                  type="button"
+                  onClick={onToggleCollapse}
+                  aria-label="Hide sidebar menu (Full Screen)"
+                  title="Hide sidebar menu (Full Screen)"
+                  className="hidden lg:flex p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+                >
+                  <PanelLeftClose className="w-4 h-4" />
+                </button>
+              )}
+
+              {/* Mobile close button */}
+              <button
+                type="button"
+                onClick={onCloseMobile}
+                aria-label="Close business navigation"
+                className="p-1 text-slate-400 hover:text-white lg:hidden"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
           </div>
 
           {/* Nav links */}

@@ -1,23 +1,56 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Menu, Bell, LogOut, CheckCircle2, Shield, ExternalLink } from 'lucide-react';
+import { Menu, Bell, LogOut, ExternalLink, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { AuthUser } from '@/lib/auth';
 
 interface AdminHeaderProps {
   user: AuthUser;
   mobileSidebarOpen: boolean;
   onOpenMobileSidebar: () => void;
+  sidebarCollapsed?: boolean;
+  onToggleSidebar?: () => void;
 }
 
-export default function AdminHeader({ user, mobileSidebarOpen, onOpenMobileSidebar }: AdminHeaderProps) {
+export default function AdminHeader({
+  user,
+  mobileSidebarOpen,
+  onOpenMobileSidebar,
+  sidebarCollapsed = false,
+  onToggleSidebar,
+}: AdminHeaderProps) {
   const router = useRouter();
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotifs, setShowNotifs] = useState(false);
+  const notifRef = useRef<HTMLDivElement>(null);
+
+  // Close notification panel when clicking outside or pressing Escape
+  useEffect(() => {
+    if (!showNotifs) return;
+
+    function handleClickOutside(event: MouseEvent) {
+      if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
+        setShowNotifs(false);
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setShowNotifs(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [showNotifs]);
 
   useEffect(() => {
     async function loadNotifs() {
@@ -61,7 +94,8 @@ export default function AdminHeader({ user, mobileSidebarOpen, onOpenMobileSideb
 
   return (
     <header className="h-16 bg-white border-b border-gm-line px-4 sm:px-8 flex items-center justify-between sticky top-0 z-30 shadow-xs">
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3 sm:gap-4">
+        {/* Mobile menu toggle */}
         <button
           onClick={onOpenMobileSidebar}
           aria-label="Open business navigation"
@@ -71,6 +105,33 @@ export default function AdminHeader({ user, mobileSidebarOpen, onOpenMobileSideb
         >
           <Menu className="w-5 h-5" />
         </button>
+
+        {/* Desktop Sidebar Toggle: Full Screen <-> Show Menu */}
+        {onToggleSidebar && (
+          <button
+            type="button"
+            onClick={onToggleSidebar}
+            aria-label={sidebarCollapsed ? 'Show sidebar menu' : 'Hide sidebar menu (Full Screen)'}
+            title={sidebarCollapsed ? 'Show sidebar menu' : 'Hide sidebar menu (Full Screen)'}
+            className={`hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition-all text-xs font-bold cursor-pointer ${
+              sidebarCollapsed
+                ? 'bg-gm-red text-white border-gm-red hover:bg-gm-red-dark shadow-sm'
+                : 'border-gm-line text-gm-muted hover:text-gm-navy hover:bg-gm-soft'
+            }`}
+          >
+            {sidebarCollapsed ? (
+              <>
+                <PanelLeftOpen className="w-4 h-4 text-white" />
+                <span className="text-[11px] font-black uppercase tracking-wider">Show Menu</span>
+              </>
+            ) : (
+              <>
+                <PanelLeftClose className="w-4 h-4" />
+                <span className="text-[11px] font-black uppercase tracking-wider">Full Screen</span>
+              </>
+            )}
+          </button>
+        )}
 
         <Link href="/admin" className="flex items-center gap-2.5">
           <div className="h-9 w-auto relative flex items-center">
@@ -90,11 +151,6 @@ export default function AdminHeader({ user, mobileSidebarOpen, onOpenMobileSideb
             </span>
           </div>
         </Link>
-        <div className="hidden">
-          <span>Gurudev Motors</span>
-          <span>/</span>
-          <span className="text-gm-navy font-black uppercase tracking-wider">{user.roleName}</span>
-        </div>
       </div>
 
       <div className="flex items-center gap-3">
@@ -109,14 +165,14 @@ export default function AdminHeader({ user, mobileSidebarOpen, onOpenMobileSideb
           <ExternalLink className="w-3 h-3" />
         </a>
 
-        {/* Notifications */}
-        <div className="relative">
+        {/* Notifications with click-outside listener */}
+        <div className="relative" ref={notifRef}>
           <button
             onClick={() => setShowNotifs(!showNotifs)}
             aria-label="Notifications"
             aria-expanded={showNotifs}
             aria-controls="business-notifications"
-            className="p-2 rounded-xl text-gm-muted hover:text-gm-navy hover:bg-gm-soft relative transition-colors"
+            className="p-2 rounded-xl text-gm-muted hover:text-gm-navy hover:bg-gm-soft relative transition-colors cursor-pointer"
             title="Notifications"
           >
             <Bell className="w-5 h-5" />
@@ -128,7 +184,10 @@ export default function AdminHeader({ user, mobileSidebarOpen, onOpenMobileSideb
           </button>
 
           {showNotifs && (
-            <div id="business-notifications" className="business-notifications absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-xl border border-gm-line p-4 z-50 animate-in fade-in duration-150">
+            <div
+              id="business-notifications"
+              className="business-notifications absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-xl border border-gm-line p-4 z-50 animate-in fade-in duration-150"
+            >
               <div className="flex items-center justify-between pb-3 border-b border-gm-line mb-3">
                 <span className="text-xs font-black text-gm-navy uppercase tracking-wider">
                   Internal Notifications
@@ -136,7 +195,7 @@ export default function AdminHeader({ user, mobileSidebarOpen, onOpenMobileSideb
                 {unreadCount > 0 && (
                   <button
                     onClick={handleMarkAllRead}
-                    className="text-[11px] font-bold text-gm-red hover:underline"
+                    className="text-[11px] font-bold text-gm-red hover:underline cursor-pointer"
                   >
                     Mark all read
                   </button>
@@ -183,7 +242,7 @@ export default function AdminHeader({ user, mobileSidebarOpen, onOpenMobileSideb
         {/* Logout */}
         <button
           onClick={handleLogout}
-          className="p-2 text-gm-muted hover:text-gm-red hover:bg-gm-soft rounded-xl transition-colors ml-1"
+          className="p-2 text-gm-muted hover:text-gm-red hover:bg-gm-soft rounded-xl transition-colors ml-1 cursor-pointer"
           title="Sign Out"
         >
           <LogOut className="w-5 h-5" />
