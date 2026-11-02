@@ -1,9 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Globe, Save, Check, Sparkles, Building2, User, Phone, MapPin, Image as ImageIcon } from 'lucide-react';
+import { Globe, Save, Check, Sparkles, Building2, User, Phone, MapPin } from 'lucide-react';
 import AdminLayout from '@/components/admin/AdminLayout';
-import ImageUpload from '@/components/admin/ImageUpload';
 
 export default function AdminContentPage() {
   const [sections, setSections] = useState<any[]>([]);
@@ -195,16 +194,9 @@ export default function AdminContentPage() {
             {selectedKey === 'hero' && (
               <div className="space-y-4 pt-3 border-t border-gm-line">
                 <h4 className="text-xs font-black text-gm-navy uppercase tracking-wider">
-                  Hero Graphics & Actions
+                  Hero Actions & CTA Buttons
                 </h4>
-                <ImageUpload
-                  value={metadata.imageUrl || '/images/hero/raipur-road-wide.webp'}
-                  onChange={(url) => updateMetaField('imageUrl', url)}
-                  label="Hero Raipur Road Background Artwork"
-                  aspectRatio="wide"
-                  helperText="Upload custom landscape or panoramic background (JPG, PNG, WebP)"
-                />
-                <div className="grid grid-cols-2 gap-3">
+                                <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-bold text-gm-navy mb-1">Primary CTA Button</label>
                     <input
@@ -230,7 +222,7 @@ export default function AdminContentPage() {
             {selectedKey === 'about' && (
               <div className="space-y-4 pt-3 border-t border-gm-line">
                 <h4 className="text-xs font-black text-gm-navy uppercase tracking-wider">
-                  Founder Message & Photo
+                  Founder Message
                 </h4>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -261,14 +253,7 @@ export default function AdminContentPage() {
                     className="w-full px-3 py-2 rounded-xl border border-gm-line text-xs resize-none"
                   />
                 </div>
-                <ImageUpload
-                  value={metadata.founderImageUrl || '/images/desk.jpeg'}
-                  onChange={(url) => updateMetaField('founderImageUrl', url)}
-                  label="Founder Portrait Photo"
-                  aspectRatio="square"
-                  helperText="Upload professional portrait of founder or leadership (JPG, PNG, WebP)"
-                />
-              </div>
+                              </div>
             )}
 
             {selectedKey === 'showroom' && (

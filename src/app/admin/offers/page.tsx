@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { Tag, Plus, CheckCircle, XCircle, Trash2 } from 'lucide-react';
 import AdminLayout from '@/components/admin/AdminLayout';
-import ImageUpload from '@/components/admin/ImageUpload';
 import { formatDate } from '@/lib/utils';
 
 export default function AdminOffersPage() {
@@ -230,14 +229,7 @@ export default function AdminOffersPage() {
                   />
                 </div>
 
-                <ImageUpload
-                  value={imageUrl}
-                  onChange={setImageUrl}
-                  label="Offer Banner / Graphic Poster"
-                  aspectRatio="wide"
-                  helperText="Upload promotional flyer, festive banner or discount poster (PNG, JPG, WebP)"
-                />
-
+                
                 <div>
                   <label className="block text-xs font-bold text-gm-navy mb-1">Description *</label>
                   <textarea

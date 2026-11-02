@@ -36,6 +36,8 @@
   ],
   "exclude": [
     "node_modules",
+    "extracted_zip",
+    "scratch",
     "mockup_reference",
     "analyze_mockup.js",
     "extract_mockup_images.js"

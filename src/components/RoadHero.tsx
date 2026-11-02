@@ -18,9 +18,35 @@ const fallbackRoadSlides: ShowroomVehicle[] = [
   { id: 'hero-bajaj', brand: 'Bajaj', model: 'Pulsar 125', category: 'NEW', year: 2026, fuel: 'Petrol', transmission: 'Manual', km: 0, colour: 'Red', price: 92000, stockStatus: 'IN_STOCK', imageUrl: '/images/hero/bajaj-pulsar-right.webp' },
 ];
 
+const heroBrandCutouts: Record<string, string> = {
+  TVS: '/images/hero/tvs-raider-right.webp',
+  Honda: '/images/hero/honda-activa-right.webp',
+  Suzuki: '/images/hero/suzuki-access-right.webp',
+  Hero: '/images/hero/hero-splendor-right.webp',
+  Bajaj: '/images/hero/bajaj-pulsar-right.webp',
+};
+
+function getHeroBikeSrc(item?: ShowroomVehicle | null): string {
+  if (!item) return '/images/hero/hero-splendor-right.webp';
+  if (item.imageUrl && item.imageUrl.endsWith('-right.webp')) {
+    return item.imageUrl;
+  }
+  if (item.brand && heroBrandCutouts[item.brand]) {
+    return heroBrandCutouts[item.brand];
+  }
+  return '/images/hero/hero-splendor-right.webp';
+}
+
 export default function RoadHero({ vehicles }: { vehicles: ShowroomVehicle[] }) {
   const { openEnquiry } = useModal();
-  const calculatedSlides = useMemo(() => getRoadSlides(vehicles), [vehicles]);
+  const calculatedSlides = useMemo(() => {
+    const raw = getRoadSlides(vehicles);
+    const base = raw && raw.length > 0 ? raw : fallbackRoadSlides;
+    return base.map((s) => ({
+      ...s,
+      imageUrl: getHeroBikeSrc(s),
+    }));
+  }, [vehicles]);
   const slides = calculatedSlides.length > 0 ? calculatedSlides : fallbackRoadSlides;
   const [{ index, phase, paused }, dispatch] = useReducer(roadReducer, initialRoadState);
   const [hovered, setHovered] = useState(false);

@@ -10,6 +10,13 @@ import { formatCurrency } from '@/lib/utils';
 import './rotating-hero.css';
 
 const brandOrder = ['TVS', 'Honda', 'Suzuki', 'Hero', 'Bajaj'];
+const heroBrandCutouts: Record<string, string> = {
+  TVS: '/images/hero/tvs-raider-right.webp',
+  Honda: '/images/hero/honda-activa-right.webp',
+  Suzuki: '/images/hero/suzuki-access-right.webp',
+  Hero: '/images/hero/hero-splendor-right.webp',
+  Bajaj: '/images/hero/bajaj-pulsar-right.webp',
+};
 const HOLD_MS = 2000;
 const IMAGE_SIZES = '(max-width: 700px) 88vw, 650px';
 
@@ -17,7 +24,17 @@ export default function RotatingHero({ vehicles }: { vehicles: ShowroomVehicle[]
   const { openEnquiry } = useModal();
   const slides = brandOrder.flatMap((brand) => {
     const vehicle = vehicles.find((item) => item.brand === brand && item.category === 'NEW' && item.imageUrl);
-    return vehicle ? [vehicle] : [];
+    return vehicle
+      ? [
+          {
+            ...vehicle,
+            imageUrl:
+              vehicle.imageUrl && vehicle.imageUrl.endsWith('-right.webp')
+                ? vehicle.imageUrl
+                : heroBrandCutouts[vehicle.brand] || vehicle.imageUrl,
+          },
+        ]
+      : [];
   });
   const [index, setIndex] = useState(0);
   const [phase, setPhase] = useState<'hold' | 'exit' | 'enter'>('hold');
