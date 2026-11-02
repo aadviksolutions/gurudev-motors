@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getSessionUser, hasPermission, hashPassword } from '@/lib/auth';
+import { getSessionUser, hasPermission, hashPassword, getRoleScope } from '@/lib/auth';
 import { logAudit } from '@/lib/audit';
-import { FALLBACK_USERS } from '@/lib/fallbackData';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,44 +13,49 @@ export async function GET(req: NextRequest) {
     const canView = await hasPermission('employees', 'view', user);
     if (!canView) return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
 
-    try {
-      const employees = await prisma.user.findMany({
-        include: {
-          role: true,
-          department: true,
-          _count: {
-            select: {
-              assignedLeads: true,
-              sales: true,
-              serviceJobCards: true,
-            },
+    const { searchParams } = new URL(req.url);
+    const search = searchParams.get('search');
+    const roleCode = searchParams.get('role');
+    const status = searchParams.get('status');
+
+    const where: any = {};
+    if (roleCode && roleCode !== 'ALL') {
+      where.role = { code: roleCode };
+    }
+    if (status && status !== 'ALL') {
+      where.active = status === 'ACTIVE';
+    }
+
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } },
+        { phone: { contains: search } },
+      ];
+    }
+
+    const employees = await prisma.user.findMany({
+      where,
+      include: {
+        role: true,
+        department: true,
+        _count: {
+          select: {
+            assignedLeads: true,
+            sales: true,
+            serviceJobCards: true,
+            testDrives: true,
+            bookings: true,
           },
         },
-        orderBy: { createdAt: 'asc' },
-      });
+      },
+      orderBy: { createdAt: 'asc' },
+    });
 
-      // Strip passwordHash before sending
-      const safeEmployees = employees.map(({ passwordHash, ...rest }) => rest);
-
-      return NextResponse.json({ success: true, employees: safeEmployees });
-    } catch (dbErr) {
-      console.warn('Prisma employees query failed, using fallback staff:', dbErr);
-      const safeFallback = FALLBACK_USERS.map(({ rawPassword, passwordHash, permissions, ...rest }) => ({
-        ...rest,
-        role: { name: rest.roleName, code: rest.roleCode },
-        department: { name: rest.departmentName },
-        _count: { assignedLeads: 4, sales: 2, serviceJobCards: 3 },
-      }));
-      return NextResponse.json({ success: true, employees: safeFallback });
-    }
+    const safeEmployees = employees.map(({ passwordHash, ...rest }) => rest);
+    return NextResponse.json({ success: true, employees: safeEmployees });
   } catch (error: any) {
-    const safeFallback = FALLBACK_USERS.map(({ rawPassword, passwordHash, permissions, ...rest }) => ({
-      ...rest,
-      role: { name: rest.roleName, code: rest.roleCode },
-      department: { name: rest.departmentName },
-      _count: { assignedLeads: 4, sales: 2, serviceJobCards: 3 },
-    }));
-    return NextResponse.json({ success: true, employees: safeFallback });
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
@@ -61,13 +65,17 @@ export async function POST(req: NextRequest) {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const canCreate = await hasPermission('employees', 'create', user);
-    if (!canCreate) return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
+    if (!canCreate) return NextResponse.json({ error: 'Permission denied: Requires Admin privileges' }, { status: 403 });
 
     const body = await req.json();
-    const { name, email, password, phone, roleId, departmentId, active = true } = body;
+    const { name, email, password, phone, roleId, departmentId, active = true, customPermissions } = body;
 
     if (!name || !email || !password || !roleId) {
       return NextResponse.json({ error: 'Name, email, password and role are required' }, { status: 400 });
+    }
+
+    if (password.length < 6) {
+      return NextResponse.json({ error: 'Password must be at least 6 characters long' }, { status: 400 });
     }
 
     const existing = await prisma.user.findUnique({ where: { email: email.toLowerCase().trim() } });
@@ -86,6 +94,7 @@ export async function POST(req: NextRequest) {
         roleId,
         departmentId: departmentId || null,
         active: Boolean(active),
+        customPermissions: customPermissions ? (typeof customPermissions === 'string' ? customPermissions : JSON.stringify(customPermissions)) : null,
       },
       include: { role: true, department: true },
     });
@@ -93,9 +102,9 @@ export async function POST(req: NextRequest) {
     await logAudit({
       user,
       action: 'CREATE',
-      module: 'EMPLOYEES',
+      module: 'USERS',
       recordId: employee.id,
-      newValue: `Created staff member ${employee.name} (${employee.role.name})`,
+      newValue: `Created user ${employee.name} (${employee.email}) with role ${employee.role.name}`,
     });
 
     const { passwordHash: _, ...safeEmployee } = employee;
@@ -111,20 +120,45 @@ export async function PUT(req: NextRequest) {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const canEdit = await hasPermission('employees', 'edit', user);
-    if (!canEdit) return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
+    if (!canEdit) return NextResponse.json({ error: 'Permission denied: Requires Admin privileges' }, { status: 403 });
 
     const body = await req.json();
-    const { id, name, phone, roleId, departmentId, active, password } = body;
+    const { id, name, phone, roleId, departmentId, active, password, customPermissions } = body;
 
-    if (!id) return NextResponse.json({ error: 'Employee ID is required' }, { status: 400 });
+    if (!id) return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
 
+    const targetUser = await prisma.user.findUnique({
+      where: { id },
+      include: { role: true },
+    });
+    if (!targetUser) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+
+    // Safety: prevent deactivating own account
+    if (id === user.id && active === false) {
+      return NextResponse.json({ error: 'You cannot deactivate your own active account' }, { status: 400 });
+    }
+
+    let auditNote = `Updated details for ${targetUser.name}`;
     const updatePayload: any = {};
     if (name) updatePayload.name = name.trim();
     if (phone !== undefined) updatePayload.phone = phone?.trim() || null;
     if (roleId) updatePayload.roleId = roleId;
     if (departmentId !== undefined) updatePayload.departmentId = departmentId || null;
     if (active !== undefined) updatePayload.active = Boolean(active);
-    if (password) updatePayload.passwordHash = await hashPassword(password);
+    if (customPermissions !== undefined) {
+      updatePayload.customPermissions = customPermissions ? (typeof customPermissions === 'string' ? customPermissions : JSON.stringify(customPermissions)) : null;
+      auditNote += ' (Individual rights updated)';
+    }
+    if (password) {
+      if (password.length < 6) {
+        return NextResponse.json({ error: 'New password must be at least 6 characters' }, { status: 400 });
+      }
+      updatePayload.passwordHash = await hashPassword(password);
+      auditNote += ' (Password was reset)';
+    }
+    if (active !== undefined && active !== targetUser.active) {
+      auditNote += ` (Status changed to ${active ? 'ACTIVE' : 'INACTIVE'})`;
+    }
 
     const updated = await prisma.user.update({
       where: { id },
@@ -135,9 +169,9 @@ export async function PUT(req: NextRequest) {
     await logAudit({
       user,
       action: 'UPDATE',
-      module: 'EMPLOYEES',
+      module: 'USERS',
       recordId: updated.id,
-      newValue: `Updated staff profile for ${updated.name}`,
+      newValue: auditNote,
     });
 
     const { passwordHash: _, ...safeEmployee } = updated;

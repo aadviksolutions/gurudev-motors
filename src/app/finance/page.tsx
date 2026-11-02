@@ -16,12 +16,27 @@ function FinanceContent() {
   );
   const [months, setMonths] = useState(36);
   const [rate, setRate] = useState(9.5);
+  const [method, setMethod] = useState<'reducing' | 'flat'>('reducing');
+
+  // Reducing Balance Method
   const r = rate / 1200;
-  const emi =
+  const emiReducing =
     r === 0
       ? amount / months
       : (amount * r * Math.pow(1 + r, months)) / (Math.pow(1 + r, months) - 1);
-  const total = emi * months;
+  const totalReducing = emiReducing * months;
+  const interestReducing = totalReducing - amount;
+
+  // Flat Rate Method
+  const years = months / 12;
+  const interestFlat = amount * (rate / 100) * years;
+  const totalFlat = amount + interestFlat;
+  const emiFlat = totalFlat / months;
+
+  // Active method values
+  const emi = method === 'reducing' ? emiReducing : emiFlat;
+  const total = method === 'reducing' ? totalReducing : totalFlat;
+  const interest = method === 'reducing' ? interestReducing : interestFlat;
   return (
     <>
       <PageHeading
@@ -36,6 +51,39 @@ function FinanceContent() {
             <Calculator size={22} />
           </div>
           <div className="emi-calculator">
+            {/* Calculation Method Toggle */}
+            <div className="mb-6 p-1 bg-slate-200/80 rounded-xl">
+              <div className="text-[11px] font-bold text-slate-600 uppercase tracking-wider px-2 py-1 mb-1">
+                Calculation Method
+              </div>
+              <div className="grid grid-cols-2 gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setMethod('reducing')}
+                  className={`py-2 px-3 text-xs sm:text-sm font-bold rounded-lg transition-all text-center flex flex-col items-center gap-0.5 ${
+                    method === 'reducing'
+                      ? 'bg-white text-slate-900 shadow-sm border border-slate-300'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+                  }`}
+                >
+                  <span>Reducing Balance</span>
+                  <span className="text-[10px] font-normal opacity-75">Calculated on remaining principal</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMethod('flat')}
+                  className={`py-2 px-3 text-xs sm:text-sm font-bold rounded-lg transition-all text-center flex flex-col items-center gap-0.5 ${
+                    method === 'flat'
+                      ? 'bg-white text-slate-900 shadow-sm border border-slate-300'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+                  }`}
+                >
+                  <span>Flat Rate</span>
+                  <span className="text-[10px] font-normal opacity-75">Calculated on total initial loan</span>
+                </button>
+              </div>
+            </div>
+
             <label htmlFor="loan-amount">
               <span>Loan amount</span>
               <strong>{formatCurrency(amount)}</strong>
@@ -88,7 +136,12 @@ function FinanceContent() {
               <span>24%</span>
             </div>
             <div className="emi-result" aria-live="polite">
-              <span>Estimated monthly EMI</span>
+              <div className="flex items-center justify-between mb-1">
+                <span>Estimated monthly EMI</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-slate-200 text-slate-700">
+                  {method === 'reducing' ? 'Reducing Balance' : 'Flat Rate'}
+                </span>
+              </div>
               <strong>
                 {formatCurrency(Math.round(emi))}
                 <small>/ month</small>
@@ -99,7 +152,7 @@ function FinanceContent() {
                 </span>
                 <span>
                   Total interest
-                  <strong>{formatCurrency(Math.round(total - amount))}</strong>
+                  <strong>{formatCurrency(Math.round(interest))}</strong>
                 </span>
                 <span>
                   Total payable
@@ -107,10 +160,19 @@ function FinanceContent() {
                 </span>
               </div>
             </div>
+
+            {/* Comparison summary between both methods */}
+            <div className="mt-4 p-3 bg-white/70 border border-slate-200 rounded-lg text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+              <div className="text-slate-600">
+                <span className="font-semibold text-slate-800">Quick Comparison: </span>
+                Reducing EMI: <strong className="text-slate-900">{formatCurrency(Math.round(emiReducing))}</strong> (Int: {formatCurrency(Math.round(interestReducing))}) vs Flat EMI: <strong className="text-slate-900">{formatCurrency(Math.round(emiFlat))}</strong> (Int: {formatCurrency(Math.round(interestFlat))})
+              </div>
+            </div>
+
             <p className="form-note">
-              Illustrative reducing-balance calculation only. Actual rate, fees,
-              down payment and eligibility depend on the lender. This is not a
-              loan offer or approval.
+              {method === 'reducing'
+                ? 'Illustrative reducing-balance calculation (interest decreases as principal is paid off). Actual rate, processing fees, and eligibility depend on the financing partner.'
+                : 'Illustrative flat-rate calculation (interest is calculated on the initial principal for the entire loan tenure). Actual rate, processing fees, and eligibility depend on the financing partner.'}
             </p>
           </div>
           <ul className="support-points">
@@ -138,8 +200,9 @@ function FinanceContent() {
             payload={{
               loanAmount: amount,
               preferredTenure: months,
+              calculationMethod: method,
               message:
-                'Customer calculator assumption: ' +
+                `Customer calculator assumption (${method === 'reducing' ? 'Reducing Balance' : 'Flat Rate'}): ` +
                 rate +
                 '% annual interest; displayed EMI ' +
                 Math.round(emi),

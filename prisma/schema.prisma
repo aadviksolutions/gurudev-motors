@@ -32,6 +32,9 @@ model User {
   assignedExchanges ExchangeRequest[]   @relation("AssignedExchanges")
   assignedFinances  FinanceApplication[] @relation("AssignedFinances")
   followUps         FollowUp[]          @relation("AssignedFollowUps")
+  customPermissions String?
+  requestedInventory InventoryRequest[] @relation("RequestedInventory")
+  reviewedInventory  InventoryRequest[] @relation("ReviewedInventory")
   notifications     Notification[]
   auditLogs         AuditLog[]
 
@@ -189,6 +192,7 @@ model Vehicle {
   bookings          Booking[]
   sales             Sale[]
   jobCards          ServiceJobCard[]
+  inventoryRequests InventoryRequest[]
 
   @@index([category])
   @@index([brand])
@@ -473,8 +477,45 @@ model ServiceJobCard {
   status           String        @default("RECEIVED") // BOOKED, RECEIVED, INSPECTION, ESTIMATE, APPROVED, WORK_IN_PROGRESS, QUALITY_CHECK, READY, DELIVERED
   advisorId        String?
   advisor          User?         @relation("AdvisorJobCards", fields: [advisorId], references: [id])
+  serviceAdvisorName String?
   technicianName   String?
+  supervisorName   String?
   deliveryDate     DateTime?
+  expectedDeliveryTime String?
+  branchName       String?       @default("Raipura Main Branch")
+
+  // Physical Job Card specific vehicle details
+  vehicleTypeKickSelf String?    // Kick, Self, Both
+  frameNumber      String?
+  engineNumber     String?
+  colour           String?
+  dateOfSale       DateTime?
+  keyNumber        String?
+  freeCouponNumber String?
+  sellingDealer    String?
+
+  // Service Types & Condition
+  serviceTypes     String?       // JSON array of selected types
+  serviceTypeNumbers String?     // JSON { freeServiceNo, paidServiceNo }
+  physicalCondition String?      // Physical & Paint condition
+
+  // Structured Requests & Work Items
+  repairRequests   String?       // JSON array: [{ regularRequest, specialRequest, actionTaken }]
+  workItems        String?       // JSON array: [{ description, quantity, labourCharges, partsCharges, total }]
+
+  // Signatures, Test Rides & Billing
+  testRideOpening      Boolean?  @default(false)
+  testRideOpeningSign  String?
+  testRideSupervisor   Boolean?  @default(false)
+  testRideSupervisorSign String?
+  customerSignature    String?
+  paymentDetails   String?       // Cash, Card, Credit, Warranty
+  invoiceNumber    String?
+  gatePassNumber   String?
+
+  // Audit / Change History
+  statusHistory    String?       // JSON array: [{ status, user, timestamp, note }]
+
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
@@ -577,4 +618,28 @@ model Offer {
   updatedAt     DateTime  @default(now()) @updatedAt
 
   @@index([active])
+}
+
+model InventoryRequest {
+  id              String    @id @default(cuid())
+  requestType     String    // ADD, EDIT, DELETE
+  status          String    @default("PENDING") // PENDING, APPROVED, REJECTED
+  module          String    @default("VEHICLES")
+  targetVehicleId String?
+  targetVehicle   Vehicle?  @relation(fields: [targetVehicleId], references: [id])
+  payload         String?   // JSON representation of vehicle fields
+  summary         String?
+  requestedById   String
+  requestedBy     User      @relation("RequestedInventory", fields: [requestedById], references: [id])
+  reviewedById    String?
+  reviewedBy      User?     @relation("ReviewedInventory", fields: [reviewedById], references: [id])
+  rejectionReason String?
+  reviewedAt      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([status])
+  @@index([requestType])
+  @@index([requestedById])
+  @@index([targetVehicleId])
 }

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { Camera, Plus, Trash2 } from 'lucide-react';
 import AdminLayout from '@/components/admin/AdminLayout';
+import ImageUpload from '@/components/admin/ImageUpload';
 
 export default function AdminGalleryPage() {
   const [items, setItems] = useState<any[]>([]);
@@ -142,8 +143,7 @@ export default function AdminGalleryPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
+                <div>
                     <label className="block text-xs font-bold text-gm-navy mb-1">Category</label>
                     <select
                       value={category}
@@ -156,18 +156,16 @@ export default function AdminGalleryPage() {
                       <option value="EVENTS">EVENTS</option>
                     </select>
                   </div>
-                  <div>
-                    <label className="block text-xs font-bold text-gm-navy mb-1">Image URL / Path *</label>
-                    <input
-                      type="text"
+
+                  <div className="pt-1">
+                    <ImageUpload
                       value={imageUrl}
-                      onChange={(e) => setImageUrl(e.target.value)}
-                      placeholder="/images/hero.jpeg"
-                      className="w-full px-3 py-2 rounded-xl border border-gm-line text-xs"
-                      required
+                      onChange={setImageUrl}
+                      label="Photo Upload *"
+                      aspectRatio="video"
+                      helperText="Upload photo from showroom, workshop or customer delivery (JPG, PNG, WebP)"
                     />
                   </div>
-                </div>
 
                 <div>
                   <label className="block text-xs font-bold text-gm-navy mb-1">Description (Optional)</label>

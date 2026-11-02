@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getSessionUser, hasPermission } from '@/lib/auth';
+import { getSessionUser, hasPermission, getRoleScope } from '@/lib/auth';
 import { logAudit } from '@/lib/audit';
 
 export const dynamic = 'force-dynamic';
@@ -13,7 +13,45 @@ export async function GET(req: NextRequest) {
     const canView = await hasPermission('test_drives', 'view', user);
     if (!canView) return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
 
+    const scope = getRoleScope(user);
+    const { searchParams } = new URL(req.url);
+    const status = searchParams.get('status');
+    const assignedToId = searchParams.get('assignedToId');
+    const search = searchParams.get('search');
+    const fromDate = searchParams.get('fromDate');
+    const toDate = searchParams.get('toDate');
+
+    const where: any = {};
+    if (status && status !== 'ALL') where.status = status;
+
+    // Role scoping: Sales Executive only sees test drives assigned to them
+    if (scope.isSalesExecutive) {
+      where.assignedToId = user.id;
+    } else if (assignedToId && assignedToId !== 'ALL') {
+      where.assignedToId = assignedToId;
+    }
+
+    if (fromDate || toDate) {
+      where.preferredDate = {};
+      if (fromDate) where.preferredDate.gte = new Date(fromDate);
+      if (toDate) {
+        const end = new Date(toDate);
+        end.setHours(23, 59, 59, 999);
+        where.preferredDate.lte = end;
+      }
+    }
+
+    if (search) {
+      where.OR = [
+        { customerName: { contains: search, mode: 'insensitive' } },
+        { mobile: { contains: search } },
+        { vehicle: { model: { contains: search, mode: 'insensitive' } } },
+        { vehicle: { brand: { contains: search, mode: 'insensitive' } } },
+      ];
+    }
+
     const testDrives = await prisma.testDrive.findMany({
+      where,
       include: {
         vehicle: true,
         assignedTo: { select: { id: true, name: true, phone: true } },
@@ -30,8 +68,9 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const user = await getSessionUser();
     const body = await req.json();
-    const { customerName, mobile, email, vehicleId, preferredDate, preferredTime, notes } = body;
+    const { customerName, mobile, email, vehicleId, preferredDate, preferredTime, notes, assignedToId } = body;
 
     if (!customerName || !mobile || !vehicleId || !preferredDate) {
       return NextResponse.json({ error: 'Customer name, mobile, vehicle and date are required' }, { status: 400 });
@@ -59,13 +98,25 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Find salesperson
-    const salesUser = await prisma.user.findFirst({
-      where: { active: true, role: { code: 'SALES_EXECUTIVE' } },
-    });
+    let assignedStaffId = assignedToId || null;
+    if (!assignedStaffId && user) {
+      const scope = getRoleScope(user);
+      if (scope.isSalesExecutive) assignedStaffId = user.id;
+    }
+
+    if (!assignedStaffId) {
+      const salesUser = await prisma.user.findFirst({
+        where: { active: true, role: { code: 'SALES_EXECUTIVE' } },
+      });
+      assignedStaffId = salesUser?.id || null;
+    }
+
+    const tdCount = await prisma.testDrive.count();
+    const requestNumber = `TD-${new Date().getFullYear()}-${String(tdCount + 101).padStart(3, '0')}`;
 
     const testDrive = await prisma.testDrive.create({
       data: {
+        requestNumber,
         customerName: customerName.trim(),
         mobile: cleanMobile,
         email: email?.trim() || null,
@@ -75,22 +126,25 @@ export async function POST(req: NextRequest) {
         status: 'REQUESTED',
         notes: notes?.trim() || null,
         customerId: customer.id,
-        assignedToId: salesUser?.id || null,
+        assignedToId: assignedStaffId,
       },
       include: {
         vehicle: true,
+        assignedTo: { select: { id: true, name: true, phone: true } },
       },
     });
 
-    // Notify staff
-    await prisma.notification.create({
-      data: {
-        title: `Test Drive Request: ${testDrive.vehicle.brand} ${testDrive.vehicle.model}`,
-        message: `${customerName} requested a test drive on ${new Date(preferredDate).toLocaleDateString()}`,
-        type: 'TEST_DRIVE',
-        link: '/admin/bookings',
-      },
-    });
+    if (assignedStaffId) {
+      await prisma.notification.create({
+        data: {
+          title: `Test Drive: ${testDrive.vehicle.brand} ${testDrive.vehicle.model}`,
+          message: `${customerName} scheduled a test drive on ${new Date(preferredDate).toLocaleDateString()}`,
+          type: 'TEST_DRIVE',
+          link: '/admin/bookings',
+          userId: assignedStaffId,
+        },
+      });
+    }
 
     return NextResponse.json({
       success: true,
@@ -111,26 +165,43 @@ export async function PUT(req: NextRequest) {
     const canEdit = await hasPermission('test_drives', 'edit', user);
     if (!canEdit) return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
 
+    const scope = getRoleScope(user);
     const body = await req.json();
-    const { id, status, assignedToId, notes } = body;
+    const { id, status, assignedToId, notes, preferredDate, preferredTime } = body;
 
     if (!id) return NextResponse.json({ error: 'ID is required' }, { status: 400 });
 
+    const existing = await prisma.testDrive.findUnique({ where: { id } });
+    if (!existing) return NextResponse.json({ error: 'Test drive not found' }, { status: 404 });
+
+    if (scope.isSalesExecutive && existing.assignedToId !== user.id) {
+      return NextResponse.json({ error: 'Permission denied: Test drive is not assigned to you' }, { status: 403 });
+    }
+
+    const updateData: any = {};
+    if (status) updateData.status = status;
+    if (notes !== undefined) updateData.notes = notes;
+    if (preferredDate !== undefined) updateData.preferredDate = new Date(preferredDate);
+    if (preferredTime !== undefined) updateData.preferredTime = preferredTime;
+
+    if (assignedToId !== undefined && (scope.isGlobalAdmin || scope.isSalesManager)) {
+      updateData.assignedToId = assignedToId || null;
+    }
+
     const updated = await prisma.testDrive.update({
       where: { id },
-      data: {
-        ...(status ? { status } : {}),
-        ...(assignedToId !== undefined ? { assignedToId } : {}),
-        ...(notes !== undefined ? { notes } : {}),
+      data: updateData,
+      include: {
+        vehicle: true,
+        assignedTo: { select: { id: true, name: true, phone: true } },
       },
-      include: { vehicle: true },
     });
 
     await logAudit({
       user,
       action: 'UPDATE',
       module: 'TEST_DRIVES',
-      recordId: id,
+      recordId: existing.requestNumber || id,
       newValue: `Status changed to ${status}`,
     });
 

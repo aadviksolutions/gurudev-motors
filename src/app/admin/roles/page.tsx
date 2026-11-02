@@ -17,17 +17,23 @@ export default function AdminRolesPage() {
   const [newRoleName, setNewRoleName] = useState('');
   const [newRoleCode, setNewRoleCode] = useState('');
   const [newRoleDesc, setNewRoleDesc] = useState('');
+  const [isCodeCustomized, setIsCodeCustomized] = useState(false);
+  const [creatingRole, setCreatingRole] = useState(false);
+  const [createRoleError, setCreateRoleError] = useState('');
 
   // Matrix state: module -> action -> boolean
   const [matrix, setMatrix] = useState<Record<string, Record<string, boolean>>>({});
 
-  const fetchRoles = async () => {
+  const fetchRoles = async (selectRoleId?: string) => {
     try {
       const res = await fetch('/api/roles');
       const data = await res.json();
       if (data.success) {
         setRoles(data.roles);
-        if (!selectedRole && data.roles.length > 0) {
+        if (selectRoleId) {
+          const match = data.roles.find((r: any) => r.id === selectRoleId);
+          if (match) selectRole(match);
+        } else if (!selectedRole && data.roles.length > 0) {
           selectRole(data.roles[0]);
         }
       }
@@ -40,6 +46,12 @@ export default function AdminRolesPage() {
 
   useEffect(() => {
     fetchRoles();
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('create') === 'true') {
+        setNewRoleModal(true);
+      }
+    }
   }, []);
 
   const selectRole = (role: any) => {
@@ -123,16 +135,21 @@ export default function AdminRolesPage() {
 
   const handleCreateRole = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newRoleName || !newRoleCode) return;
+    setCreateRoleError('');
+    if (!newRoleName.trim() || !newRoleCode.trim()) {
+      setCreateRoleError('Role display name and unique code are required.');
+      return;
+    }
 
+    setCreatingRole(true);
     try {
       const res = await fetch('/api/roles', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: newRoleName,
-          code: newRoleCode,
-          description: newRoleDesc,
+          name: newRoleName.trim(),
+          code: newRoleCode.trim(),
+          description: newRoleDesc.trim(),
           permissions: MODULES.map((m) => ({
             module: m.key,
             view: true,
@@ -146,15 +163,20 @@ export default function AdminRolesPage() {
         }),
       });
       const data = await res.json();
-      if (data.success) {
-        setNewRoleModal(false);
-        setNewRoleName('');
-        setNewRoleCode('');
-        setNewRoleDesc('');
-        fetchRoles();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to create role');
       }
-    } catch (err) {
-      console.error(err);
+
+      setNewRoleModal(false);
+      setNewRoleName('');
+      setNewRoleCode('');
+      setNewRoleDesc('');
+      setIsCodeCustomized(false);
+      await fetchRoles(data.role.id);
+    } catch (err: any) {
+      setCreateRoleError(err.message || 'Error creating custom role');
+    } finally {
+      setCreatingRole(false);
     }
   };
 
@@ -291,30 +313,60 @@ export default function AdminRolesPage() {
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
             <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full border border-gm-line shadow-2xl">
               <div className="flex items-center justify-between pb-3 border-b border-gm-line mb-4">
-                <h3 className="text-xl font-black text-gm-navy">Create Custom Role</h3>
-                <button onClick={() => setNewRoleModal(false)} className="text-gm-muted font-bold">✕</button>
+                <div>
+                  <h3 className="text-xl font-black text-gm-navy">Create Custom Role</h3>
+                  <p className="text-xs text-gm-muted">Create role with auto-identifier and custom permissions</p>
+                </div>
+                <button
+                  onClick={() => {
+                    setNewRoleModal(false);
+                    setCreateRoleError('');
+                  }}
+                  className="text-gm-muted font-bold p-1 rounded-lg hover:bg-gm-soft"
+                >
+                  ✕
+                </button>
               </div>
 
-              <form onSubmit={handleCreateRole} className="space-y-3">
+              {createRoleError && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{createRoleError}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleCreateRole} className="space-y-3.5">
                 <div>
                   <label className="block text-xs font-bold text-gm-navy mb-1">Role Display Name *</label>
                   <input
                     type="text"
                     value={newRoleName}
-                    onChange={(e) => setNewRoleName(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setNewRoleName(val);
+                      if (!isCodeCustomized) {
+                        setNewRoleCode(val.toUpperCase().replace(/[^A-Z0-9]/g, '_'));
+                      }
+                    }}
                     placeholder="e.g. Workshop Supervisor"
-                    className="w-full px-3 py-2 rounded-xl border border-gm-line text-xs font-bold"
+                    className="w-full px-3 py-2 rounded-xl border border-gm-line text-xs font-bold focus:outline-none focus:border-gm-navy"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-gm-navy mb-1">Unique Role Code *</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold text-gm-navy">Unique Role Code *</label>
+                    <span className="text-[10px] text-gm-muted">Auto-generated</span>
+                  </div>
                   <input
                     type="text"
                     value={newRoleCode}
-                    onChange={(e) => setNewRoleCode(e.target.value)}
+                    onChange={(e) => {
+                      setIsCodeCustomized(true);
+                      setNewRoleCode(e.target.value.toUpperCase().replace(/\s+/g, '_'));
+                    }}
                     placeholder="e.g. WORKSHOP_SUPERVISOR"
-                    className="w-full px-3 py-2 rounded-xl border border-gm-line text-xs font-mono uppercase"
+                    className="w-full px-3 py-2 rounded-xl border border-gm-line text-xs font-mono uppercase font-bold focus:outline-none focus:border-gm-navy"
                     required
                   />
                 </div>
@@ -323,25 +375,29 @@ export default function AdminRolesPage() {
                   <textarea
                     value={newRoleDesc}
                     onChange={(e) => setNewRoleDesc(e.target.value)}
-                    placeholder="Define responsibilities..."
+                    placeholder="Define role responsibilities, departments, etc."
                     rows={2}
-                    className="w-full px-3 py-2 rounded-xl border border-gm-line text-xs resize-none"
+                    className="w-full px-3 py-2 rounded-xl border border-gm-line text-xs resize-none focus:outline-none focus:border-gm-navy"
                   />
                 </div>
 
                 <div className="pt-2 flex gap-2">
                   <button
                     type="button"
-                    onClick={() => setNewRoleModal(false)}
-                    className="w-1/3 py-2 rounded-xl border border-gm-line text-xs font-bold text-gm-muted"
+                    onClick={() => {
+                      setNewRoleModal(false);
+                      setCreateRoleError('');
+                    }}
+                    className="w-1/3 py-2.5 rounded-xl border border-gm-line text-xs font-bold text-gm-muted hover:bg-gm-soft transition-colors"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="w-2/3 bg-gm-navy hover:bg-gm-navy-dark text-white font-bold text-xs py-2 rounded-xl shadow transition-colors"
+                    disabled={creatingRole}
+                    className="w-2/3 bg-gm-navy hover:bg-gm-navy-dark text-white font-bold text-xs py-2.5 rounded-xl shadow transition-colors disabled:opacity-50"
                   >
-                    Create Role
+                    {creatingRole ? 'Creating Role...' : 'Create Role'}
                   </button>
                 </div>
               </form>

@@ -33,6 +33,7 @@ import TestDriveModal from '@/components/TestDriveModal';
 import RotatingHero from '@/components/RotatingHero';
 import RoadHero from '@/components/RoadHero';
 import ShowroomPhotos from '@/components/ShowroomPhotos';
+import GoogleReviewsSection from '@/components/GoogleReviewsSection';
 
 const brandLogos: Record<string, { src: string; width: number; height: number }> = {
   TVS: { src: '/images/brands/tvs.svg', width: 148, height: 27 },
@@ -326,6 +327,7 @@ export default function HomePage() {
         </div>
       </section>
       <ShowroomPhotos />
+      <GoogleReviewsSection />
       <section className="visit-band">
         <div className="site-container visit-grid">
           <div>

@@ -14,6 +14,8 @@ import {
   Edit2,
   UserPlus,
   MessageSquare,
+  RefreshCw,
+  CalendarCheck,
 } from 'lucide-react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { formatDate, getStatusColor } from '@/lib/utils';
@@ -22,6 +24,7 @@ export default function AdminLeadsPage() {
   const [leads, setLeads] = useState<any[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [selectedLead, setSelectedLead] = useState<any | null>(null);
@@ -34,11 +37,25 @@ export default function AdminLeadsPage() {
   const [newBudget, setNewBudget] = useState('');
   const [newSource, setNewSource] = useState('WALK_IN');
   const [newNotes, setNewNotes] = useState('');
+  const [newFollowUpDate, setNewFollowUpDate] = useState(
+    new Date(Date.now() + 24 * 3600 * 1000).toISOString().split('T')[0]
+  );
   const [submitting, setSubmitting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+
+  // Follow-up interaction form in Details modal
+  const [followUpNote, setFollowUpNote] = useState('');
+  const [nextFollowUpDate, setNextFollowUpDate] = useState('');
+  const [updatingFollowUp, setUpdatingFollowUp] = useState(false);
 
   const fetchLeads = async () => {
     try {
-      const res = await fetch(`/api/leads?status=${statusFilter}&search=${search}`);
+      setRefreshing(true);
+      const params = new URLSearchParams();
+      if (statusFilter !== 'ALL') params.set('status', statusFilter);
+      if (search) params.set('search', search);
+
+      const res = await fetch(`/api/leads?${params.toString()}`);
       const data = await res.json();
       if (data.success) {
         setLeads(data.leads);
@@ -47,6 +64,7 @@ export default function AdminLeadsPage() {
       console.error(err);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -55,7 +73,11 @@ export default function AdminLeadsPage() {
       const res = await fetch('/api/employees');
       const data = await res.json();
       if (data.success) {
-        setEmployees(data.employees);
+        // Filter to sales staff
+        const salesStaff = data.employees.filter((e: any) =>
+          ['SALES_EXECUTIVE', 'SALES_MANAGER', 'MAIN_ADMIN'].includes(e.role?.code)
+        );
+        setEmployees(salesStaff);
       }
     } catch (err) {
       console.error(err);
@@ -63,9 +85,17 @@ export default function AdminLeadsPage() {
   };
 
   useEffect(() => {
-    fetchLeads();
     fetchEmployees();
+  }, []);
+
+  useEffect(() => {
+    fetchLeads();
   }, [statusFilter]);
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    fetchLeads();
+  };
 
   const handleUpdateLeadStatus = async (id: string, newStatus: string) => {
     try {
@@ -85,44 +115,90 @@ export default function AdminLeadsPage() {
 
   const handleAssignEmployee = async (id: string, assignedToId: string) => {
     try {
-      await fetch('/api/leads', {
+      const res = await fetch('/api/leads', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, assignedToId }),
+        body: JSON.stringify({ id, assignedToId: assignedToId || null }),
       });
+      const data = await res.json();
+      if (!data.success) {
+        alert(data.error || 'Failed to reassign lead');
+      }
       fetchLeads();
     } catch (err) {
       console.error(err);
     }
   };
 
+  const handleRecordFollowUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedLead) return;
+
+    setUpdatingFollowUp(true);
+    try {
+      const updatedNotes = followUpNote
+        ? `${selectedLead.notes ? selectedLead.notes + '\n' : ''}[${new Date().toLocaleDateString('en-IN')}] ${followUpNote.trim()}`
+        : selectedLead.notes;
+
+      const res = await fetch('/api/leads', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: selectedLead.id,
+          notes: updatedNotes,
+          followUpDate: nextFollowUpDate || selectedLead.followUpDate,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSelectedLead(data.lead);
+        setFollowUpNote('');
+        fetchLeads();
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setUpdatingFollowUp(false);
+    }
+  };
+
   const handleCreateLead = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newName || !newMobile || !newVehicle) return;
+    if (!newName || !newMobile || !newVehicle) {
+      setErrorMsg('Please enter customer name, phone, and vehicle model');
+      return;
+    }
 
     setSubmitting(true);
+    setErrorMsg('');
     try {
-      await fetch('/api/leads', {
+      const res = await fetch('/api/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          customerName: newName,
-          mobile: newMobile,
-          vehicleModel: newVehicle,
-          budget: newBudget,
+          customerName: newName.trim(),
+          mobile: newMobile.trim(),
+          vehicleModel: newVehicle.trim(),
+          budget: newBudget.trim(),
           source: newSource,
-          notes: newNotes,
+          notes: newNotes.trim(),
+          followUpDate: newFollowUpDate || undefined,
         }),
       });
-      setShowCreateModal(false);
-      setNewName('');
-      setNewMobile('');
-      setNewVehicle('');
-      setNewBudget('');
-      setNewNotes('');
-      fetchLeads();
-    } catch (err) {
-      console.error(err);
+      const data = await res.json();
+      if (data.success) {
+        setShowCreateModal(false);
+        setNewName('');
+        setNewMobile('');
+        setNewVehicle('');
+        setNewBudget('');
+        setNewNotes('');
+        fetchLeads();
+      } else {
+        setErrorMsg(data.error || 'Failed to create lead');
+      }
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Error occurred');
     } finally {
       setSubmitting(false);
     }
@@ -140,48 +216,64 @@ export default function AdminLeadsPage() {
     'LOST',
   ];
 
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+
   return (
     <AdminLayout>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-black text-gm-navy tracking-tight">
-              CRM Lead Management
+            <h1 className="text-2xl font-black text-gm-navy tracking-tight flex items-center gap-2">
+              <Users className="w-6 h-6 text-gm-red" />
+              CRM Lead Management & Pipeline
             </h1>
             <p className="text-xs text-gm-muted mt-0.5">
               Enquiries received via website, WhatsApp, phone calls, and showroom walk-ins.
             </p>
           </div>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="bg-gm-red hover:bg-gm-red-dark text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-xs transition-colors flex items-center gap-1.5 self-start sm:self-auto"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add New Lead</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={fetchLeads}
+              disabled={refreshing}
+              className="bg-white border border-gm-line hover:border-gm-navy text-gm-navy text-xs font-bold px-3 py-2.5 rounded-xl transition-colors flex items-center gap-1.5 shadow-xs"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+              <span>Refresh</span>
+            </button>
+            <button
+              onClick={() => {
+                setErrorMsg('');
+                setShowCreateModal(true);
+              }}
+              className="bg-gm-red hover:bg-gm-red-dark text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add New Lead</span>
+            </button>
+          </div>
         </div>
 
         {/* Filters */}
         <div className="bg-white rounded-2xl p-4 border border-gm-line shadow-xs flex flex-col md:flex-row items-center gap-3 justify-between">
-          <div className="relative w-full md:w-80">
+          <form onSubmit={handleSearchSubmit} className="relative w-full md:w-80">
             <Search className="w-4 h-4 text-gm-muted absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && fetchLeads()}
               placeholder="Search by name, mobile, vehicle..."
               className="w-full pl-10 pr-4 py-2 rounded-xl border border-gm-line text-xs font-medium focus:outline-none focus:border-gm-navy"
             />
-          </div>
+          </form>
 
-          <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto pb-1 md:pb-0">
+          <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-1 md:pb-0">
             {statusOptions.map((st) => (
               <button
                 key={st}
                 onClick={() => setStatusFilter(st)}
-                className={`px-3 py-1.5 rounded-xl text-[11px] font-bold whitespace-nowrap transition-colors ${
+                className={`px-2.5 py-1.5 rounded-xl text-[10px] font-bold whitespace-nowrap transition-colors ${
                   statusFilter === st
                     ? 'bg-gm-navy text-white'
                     : 'bg-gm-soft text-gm-navy hover:bg-gm-line/50 border border-gm-line'
@@ -205,104 +297,126 @@ export default function AdminLeadsPage() {
                   <th className="p-3.5">Source</th>
                   <th className="p-3.5">Status</th>
                   <th className="p-3.5">Assigned Salesperson</th>
-                  <th className="p-3.5">Follow-up Date</th>
-                  <th className="p-3.5">Actions</th>
+                  <th className="p-3.5">Follow-up Due</th>
+                  <th className="p-3.5 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gm-line/60">
                 {loading ? (
                   <tr>
-                    <td colSpan={8} className="p-8 text-center text-gm-muted">
-                      Loading leads...
-                    </td>
+                    <td colSpan={8} className="p-8 text-center text-gm-muted">Loading leads...</td>
                   </tr>
-                ) : leads.length > 0 ? (
-                  leads.map((lead) => (
-                    <tr key={lead.id} className="hover:bg-gm-soft/40 transition-colors">
-                      <td className="p-3.5 font-mono font-bold text-gm-navy">
-                        {lead.leadNumber}
-                      </td>
-                      <td className="p-3.5">
-                        <b className="text-gm-navy block">{lead.customerName}</b>
-                        <a href={`tel:${lead.mobile}`} className="text-gm-muted hover:text-gm-red text-[11px] flex items-center gap-1">
-                          <Phone className="w-3 h-3 text-gm-red" />
-                          {lead.mobile}
-                        </a>
-                      </td>
-                      <td className="p-3.5 font-bold text-gm-navy">
-                        {lead.vehicleModel}
-                        {lead.budget && (
-                          <span className="block text-[10px] text-gm-muted font-normal">
-                            Budget: {lead.budget}
-                          </span>
-                        )}
-                      </td>
-                      <td className="p-3.5 text-gm-muted font-bold text-[10px]">
-                        {lead.source}
-                      </td>
-                      <td className="p-3.5">
-                        <select
-                          value={lead.status}
-                          onChange={(e) => handleUpdateLeadStatus(lead.id, e.target.value)}
-                          className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase border cursor-pointer ${getStatusColor(lead.status)}`}
-                        >
-                          <option value="NEW">NEW</option>
-                          <option value="CONTACTED">CONTACTED</option>
-                          <option value="INTERESTED">INTERESTED</option>
-                          <option value="TEST_DRIVE">TEST DRIVE</option>
-                          <option value="NEGOTIATION">NEGOTIATION</option>
-                          <option value="BOOKED">BOOKED</option>
-                          <option value="DELIVERED">DELIVERED</option>
-                          <option value="LOST">LOST</option>
-                        </select>
-                      </td>
-                      <td className="p-3.5">
-                        <select
-                          value={lead.assignedToId || ''}
-                          onChange={(e) => handleAssignEmployee(lead.id, e.target.value)}
-                          className="px-2 py-1 rounded-lg border border-gm-line text-xs font-medium text-gm-navy bg-white focus:outline-none"
-                        >
-                          <option value="">-- Unassigned --</option>
-                          {employees.map((emp) => (
-                            <option key={emp.id} value={emp.id}>
-                              {emp.name} ({emp.role?.name})
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td className="p-3.5 text-gm-muted">
-                        {formatDate(lead.followUpDate)}
-                      </td>
-                      <td className="p-3.5">
-                        <button
-                          onClick={() => setSelectedLead(lead)}
-                          className="text-xs font-bold text-gm-navy hover:text-gm-red underline"
-                        >
-                          Details
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
+                ) : leads.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="p-8 text-center text-gm-muted">
-                      No leads found.
-                    </td>
+                    <td colSpan={8} className="p-8 text-center text-gm-muted">No leads found matching filter.</td>
                   </tr>
+                ) : (
+                  leads.map((lead) => {
+                    const isOverdue =
+                      lead.followUpDate &&
+                      new Date(lead.followUpDate) < now &&
+                      !['DELIVERED', 'LOST', 'CLOSED', 'BOOKED'].includes(lead.status);
+
+                    return (
+                      <tr key={lead.id} className="hover:bg-gm-soft/40 transition-colors">
+                        <td className="p-3.5 font-mono font-bold text-gm-navy">
+                          {lead.leadNumber}
+                        </td>
+                        <td className="p-3.5">
+                          <b className="text-gm-navy block">{lead.customerName}</b>
+                          <a href={`tel:${lead.mobile}`} className="text-gm-muted hover:text-gm-red text-[11px] flex items-center gap-1">
+                            <Phone className="w-3 h-3 text-gm-red" />
+                            {lead.mobile}
+                          </a>
+                        </td>
+                        <td className="p-3.5 font-bold text-gm-navy">
+                          {lead.vehicleModel}
+                          {lead.budget && (
+                            <span className="block text-[10px] text-gm-muted font-normal">
+                              Budget: {lead.budget}
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-3.5 text-gm-muted font-bold text-[10px]">
+                          {lead.source}
+                        </td>
+                        <td className="p-3.5">
+                          <select
+                            value={lead.status}
+                            onChange={(e) => handleUpdateLeadStatus(lead.id, e.target.value)}
+                            className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase border cursor-pointer ${getStatusColor(lead.status)}`}
+                          >
+                            <option value="NEW">NEW</option>
+                            <option value="CONTACTED">CONTACTED</option>
+                            <option value="INTERESTED">INTERESTED</option>
+                            <option value="TEST_DRIVE">TEST DRIVE</option>
+                            <option value="NEGOTIATION">NEGOTIATION</option>
+                            <option value="BOOKED">BOOKED</option>
+                            <option value="DELIVERED">DELIVERED</option>
+                            <option value="LOST">LOST</option>
+                          </select>
+                        </td>
+                        <td className="p-3.5">
+                          <select
+                            value={lead.assignedToId || ''}
+                            onChange={(e) => handleAssignEmployee(lead.id, e.target.value)}
+                            className="px-2 py-1 rounded-lg border border-gm-line text-xs font-medium text-gm-navy bg-white focus:outline-none"
+                          >
+                            <option value="">-- Unassigned --</option>
+                            {employees.map((emp) => (
+                              <option key={emp.id} value={emp.id}>
+                                {emp.name} ({emp.role?.name})
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="p-3.5">
+                          {lead.followUpDate ? (
+                            <div>
+                              <span className="text-gm-navy font-medium block">
+                                {formatDate(lead.followUpDate)}
+                              </span>
+                              {isOverdue && (
+                                <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-black bg-rose-50 text-rose-700 border border-rose-200 mt-0.5 uppercase">
+                                  Overdue
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-gm-muted">Not scheduled</span>
+                          )}
+                        </td>
+                        <td className="p-3.5 text-right">
+                          <button
+                            onClick={() => {
+                              setSelectedLead(lead);
+                              setNextFollowUpDate(
+                                lead.followUpDate ? new Date(lead.followUpDate).toISOString().split('T')[0] : ''
+                              );
+                              setFollowUpNote('');
+                            }}
+                            className="text-xs font-bold text-gm-navy hover:text-gm-red underline"
+                          >
+                            Details & Log ↗
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
           </div>
         </div>
 
-        {/* Lead Details Modal */}
+        {/* Lead Details & Follow-up History Modal */}
         {selectedLead && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-            <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full border border-gm-line shadow-2xl space-y-4">
+            <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full border border-gm-line shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between pb-3 border-b border-gm-line">
                 <div>
                   <span className="text-[10px] font-black uppercase text-gm-red tracking-wider block">
-                    Lead Details
+                    Lead Details & Follow-up Log
                   </span>
                   <h3 className="text-xl font-black text-gm-navy">
                     {selectedLead.customerName} ({selectedLead.leadNumber})
@@ -316,23 +430,63 @@ export default function AdminLeadsPage() {
                 </button>
               </div>
 
-              <div className="space-y-2 text-xs">
+              <div className="grid grid-cols-2 gap-3 text-xs">
                 <div><b>Mobile:</b> {selectedLead.mobile}</div>
                 <div><b>Email:</b> {selectedLead.email || 'N/A'}</div>
                 <div><b>Vehicle Model:</b> {selectedLead.vehicleModel}</div>
-                <div><b>Budget / Requirement:</b> {selectedLead.budget || 'N/A'}</div>
+                <div><b>Budget:</b> {selectedLead.budget || 'N/A'}</div>
                 <div><b>Lead Source:</b> {selectedLead.source}</div>
                 <div><b>Current Status:</b> {selectedLead.status}</div>
-                <div><b>Assigned Executive:</b> {selectedLead.assignedTo?.name || 'Unassigned'}</div>
-                <div className="pt-2">
-                  <b>Notes & Interaction History:</b>
-                  <p className="mt-1 p-3 rounded-xl bg-gm-soft border border-gm-line text-gm-muted leading-relaxed">
-                    {selectedLead.notes || 'No notes added yet.'}
-                  </p>
+                <div><b>Executive:</b> {selectedLead.assignedTo?.name || 'Unassigned'}</div>
+                <div><b>Follow-up Date:</b> {formatDate(selectedLead.followUpDate)}</div>
+              </div>
+
+              {/* Interaction Notes */}
+              <div className="text-xs space-y-1">
+                <b>History Notes:</b>
+                <div className="p-3 rounded-xl bg-gm-soft border border-gm-line text-gm-navy leading-relaxed font-mono text-[11px] max-h-32 overflow-y-auto whitespace-pre-wrap">
+                  {selectedLead.notes || 'No previous notes logged.'}
                 </div>
               </div>
 
-              <div className="pt-4 flex gap-2">
+              {/* Add Follow-up Entry Form */}
+              <form onSubmit={handleRecordFollowUp} className="space-y-3 pt-2 border-t border-gm-line">
+                <h4 className="text-xs font-black uppercase text-gm-navy">Log New Follow-up & Reschedule</h4>
+                <div>
+                  <label className="block text-[11px] font-bold text-gm-navy mb-1">Follow-up Discussion Notes</label>
+                  <textarea
+                    rows={2}
+                    value={followUpNote}
+                    onChange={(e) => setFollowUpNote(e.target.value)}
+                    placeholder="e.g. Spoke to customer, interested in test drive this Saturday afternoon..."
+                    className="w-full px-3 py-1.5 rounded-xl border border-gm-line text-xs font-medium"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-gm-navy mb-1">Next Follow-up Date</label>
+                    <input
+                      type="date"
+                      value={nextFollowUpDate}
+                      onChange={(e) => setNextFollowUpDate(e.target.value)}
+                      className="w-full px-3 py-1.5 rounded-xl border border-gm-line text-xs font-semibold"
+                    />
+                  </div>
+                  <div className="flex items-end">
+                    <button
+                      type="submit"
+                      disabled={updatingFollowUp}
+                      className="w-full bg-gm-navy hover:bg-gm-navy-dark text-white text-xs font-bold py-2 rounded-xl transition-colors"
+                    >
+                      {updatingFollowUp ? 'Saving...' : 'Save Follow-up'}
+                    </button>
+                  </div>
+                </div>
+              </form>
+
+              {/* Contact Actions */}
+              <div className="pt-2 flex gap-2">
                 <a
                   href={`tel:${selectedLead.mobile}`}
                   className="flex-1 bg-gm-navy text-white text-xs font-bold py-2.5 rounded-xl text-center flex items-center justify-center gap-1"
@@ -359,33 +513,54 @@ export default function AdminLeadsPage() {
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
             <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full border border-gm-line shadow-2xl">
               <div className="flex items-center justify-between pb-3 border-b border-gm-line mb-4">
-                <h3 className="text-xl font-black text-gm-navy">Add Walk-in or Phone Lead</h3>
-                <button onClick={() => setShowCreateModal(false)} className="text-gm-muted hover:text-gm-navy">
+                <h3 className="text-xl font-black text-gm-navy">Add New Enquiry / Lead</h3>
+                <button
+                  onClick={() => setShowCreateModal(false)}
+                  className="text-gm-muted hover:text-gm-navy text-sm font-bold"
+                >
                   ✕
                 </button>
               </div>
 
+              {errorMsg && (
+                <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-bold">
+                  {errorMsg}
+                </div>
+              )}
+
               <form onSubmit={handleCreateLead} className="space-y-3">
+                <div>
+                  <label className="block text-xs font-bold text-gm-navy mb-1">Customer Name *</label>
+                  <input
+                    type="text"
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    placeholder="e.g. Alok Sharma"
+                    className="w-full px-3 py-2 rounded-xl border border-gm-line text-xs font-medium"
+                    required
+                  />
+                </div>
+
                 <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-bold text-gm-navy mb-1">Customer Name *</label>
-                    <input
-                      type="text"
-                      value={newName}
-                      onChange={(e) => setNewName(e.target.value)}
-                      placeholder="Name"
-                      className="w-full px-3 py-2 rounded-xl border border-gm-line text-xs focus:outline-none focus:border-gm-navy"
-                      required
-                    />
-                  </div>
                   <div>
                     <label className="block text-xs font-bold text-gm-navy mb-1">Mobile Number *</label>
                     <input
                       type="tel"
                       value={newMobile}
                       onChange={(e) => setNewMobile(e.target.value)}
-                      placeholder="10-digit mobile"
-                      className="w-full px-3 py-2 rounded-xl border border-gm-line text-xs focus:outline-none focus:border-gm-navy"
+                      placeholder="e.g. 9827012345"
+                      className="w-full px-3 py-2 rounded-xl border border-gm-line text-xs font-medium"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gm-navy mb-1">Vehicle Model *</label>
+                    <input
+                      type="text"
+                      value={newVehicle}
+                      onChange={(e) => setNewVehicle(e.target.value)}
+                      placeholder="e.g. Hero Splendor+ XTEC"
+                      className="w-full px-3 py-2 rounded-xl border border-gm-line text-xs font-medium"
                       required
                     />
                   </div>
@@ -393,54 +568,53 @@ export default function AdminLeadsPage() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-bold text-gm-navy mb-1">Vehicle Model *</label>
-                    <input
-                      type="text"
-                      value={newVehicle}
-                      onChange={(e) => setNewVehicle(e.target.value)}
-                      placeholder="e.g. Hero Splendor, Activa"
-                      className="w-full px-3 py-2 rounded-xl border border-gm-line text-xs focus:outline-none focus:border-gm-navy"
-                      required
-                    />
-                  </div>
-                  <div>
                     <label className="block text-xs font-bold text-gm-navy mb-1">Lead Source</label>
                     <select
                       value={newSource}
                       onChange={(e) => setNewSource(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-gm-line text-xs focus:outline-none focus:border-gm-navy bg-white"
+                      className="w-full px-3 py-2 rounded-xl border border-gm-line text-xs font-bold bg-white"
                     >
                       <option value="WALK_IN">Showroom Walk-in</option>
-                      <option value="CALL">Inbound Phone Call</option>
-                      <option value="WHATSAPP">WhatsApp Direct</option>
+                      <option value="WEBSITE">Website Enquiry</option>
+                      <option value="WHATSAPP">WhatsApp</option>
+                      <option value="PHONE">Phone Call</option>
                       <option value="REFERRAL">Customer Referral</option>
                     </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gm-navy mb-1">Budget / Requirement</label>
+                    <input
+                      type="text"
+                      value={newBudget}
+                      onChange={(e) => setNewBudget(e.target.value)}
+                      placeholder="e.g. ₹85,000 / Cash"
+                      className="w-full px-3 py-2 rounded-xl border border-gm-line text-xs font-medium"
+                    />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gm-navy mb-1">Budget / Plan</label>
+                  <label className="block text-xs font-bold text-gm-navy mb-1">Next Follow-up Date</label>
                   <input
-                    type="text"
-                    value={newBudget}
-                    onChange={(e) => setNewBudget(e.target.value)}
-                    placeholder="e.g. ₹80,000 / Exchange"
-                    className="w-full px-3 py-2 rounded-xl border border-gm-line text-xs focus:outline-none focus:border-gm-navy"
+                    type="date"
+                    value={newFollowUpDate}
+                    onChange={(e) => setNewFollowUpDate(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-gm-line text-xs font-semibold"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gm-navy mb-1">Initial Discussion Notes</label>
+                  <label className="block text-xs font-bold text-gm-navy mb-1">Initial Notes</label>
                   <textarea
+                    rows={2}
                     value={newNotes}
                     onChange={(e) => setNewNotes(e.target.value)}
-                    placeholder="Exchange requirement, financing queries..."
-                    rows={2}
-                    className="w-full px-3 py-2 rounded-xl border border-gm-line text-xs focus:outline-none focus:border-gm-navy resize-none"
+                    placeholder="Customer requirements, preferred colors..."
+                    className="w-full px-3 py-2 rounded-xl border border-gm-line text-xs font-medium"
                   />
                 </div>
 
-                <div className="pt-2 flex gap-2">
+                <div className="pt-3 flex gap-2">
                   <button
                     type="button"
                     onClick={() => setShowCreateModal(false)}
@@ -453,7 +627,7 @@ export default function AdminLeadsPage() {
                     disabled={submitting}
                     className="w-2/3 bg-gm-red hover:bg-gm-red-dark text-white font-bold text-xs py-2.5 rounded-xl shadow transition-colors"
                   >
-                    {submitting ? 'Creating...' : 'Save Lead To CRM'}
+                    {submitting ? 'Saving...' : 'Create Lead'}
                   </button>
                 </div>
               </form>

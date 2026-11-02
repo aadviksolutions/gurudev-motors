@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getSessionUser, hasPermission } from '@/lib/auth';
+import { getSessionUser, hasPermission, getRoleScope } from '@/lib/auth';
 import { logAudit } from '@/lib/audit';
 
 export const dynamic = 'force-dynamic';
@@ -87,9 +87,62 @@ export async function POST(req: NextRequest) {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const canCreate = await hasPermission('vehicles', 'create', user);
-    if (!canCreate) return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
+    const canView = await hasPermission('vehicles', 'view', user);
+    if (!canCreate && !canView) return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
 
+    const scope = getRoleScope(user);
     const body = await req.json();
+
+    // If not admin, route to inventory approval request
+    if (!scope.isGlobalAdmin) {
+      const brand = body.brand || 'Vehicle';
+      const model = body.model || 'Model';
+      const price = body.price || 0;
+      const summary = `Add Vehicle: ${brand} ${model} (₹${price})`;
+
+      const invReq = await prisma.inventoryRequest.create({
+        data: {
+          requestType: 'ADD',
+          status: 'PENDING',
+          module: 'VEHICLES',
+          summary,
+          payload: JSON.stringify(body),
+          requestedById: user.id,
+        },
+      });
+
+      const adminUsers = await prisma.user.findMany({
+        where: {
+          role: { code: { in: ['MAIN_ADMIN', 'SUPER_ADMIN', 'ADMIN'] } },
+          active: true,
+        },
+      });
+      for (const admin of adminUsers) {
+        await prisma.notification.create({
+          data: {
+            userId: admin.id,
+            title: 'New Inventory Approval Request',
+            message: `${user.name} (${user.roleName || 'Staff'}) submitted a request to add ${brand} ${model} to inventory.`,
+            type: 'SYSTEM',
+          },
+        });
+      }
+
+      await logAudit({
+        user,
+        action: 'CREATE',
+        module: 'VEHICLES',
+        recordId: invReq.id,
+        newValue: `Submitted approval request to ADD vehicle: ${summary}`,
+      });
+
+      return NextResponse.json({
+        success: true,
+        pendingApproval: true,
+        requestId: invReq.id,
+        message: 'Request submitted to Admin for approval. The vehicle will be added to inventory once approved by Admin.',
+      });
+    }
 
     // Check for Duplicate Vehicle Action
     if (body.action === 'duplicate' && body.sourceId) {
@@ -273,8 +326,10 @@ export async function PUT(req: NextRequest) {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const canEdit = await hasPermission('vehicles', 'edit', user);
-    if (!canEdit) return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
+    const canView = await hasPermission('vehicles', 'view', user);
+    if (!canEdit && !canView) return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
 
+    const scope = getRoleScope(user);
     const body = await req.json();
     const { id, images, ...data } = body;
 
@@ -285,6 +340,55 @@ export async function PUT(req: NextRequest) {
       include: { images: true },
     });
     if (!existing) return NextResponse.json({ error: 'Vehicle not found' }, { status: 404 });
+
+    // If not admin, route to inventory approval request
+    if (!scope.isGlobalAdmin) {
+      const summary = `Edit Vehicle: ${existing.brand} ${existing.model} (ID: ${existing.id.slice(0, 8)})`;
+
+      const invReq = await prisma.inventoryRequest.create({
+        data: {
+          requestType: 'EDIT',
+          status: 'PENDING',
+          module: 'VEHICLES',
+          targetVehicleId: id,
+          summary,
+          payload: JSON.stringify(body),
+          requestedById: user.id,
+        },
+      });
+
+      const adminUsers = await prisma.user.findMany({
+        where: {
+          role: { code: { in: ['MAIN_ADMIN', 'SUPER_ADMIN', 'ADMIN'] } },
+          active: true,
+        },
+      });
+      for (const admin of adminUsers) {
+        await prisma.notification.create({
+          data: {
+            userId: admin.id,
+            title: 'Inventory Edit Approval Request',
+            message: `${user.name} (${user.roleName || 'Staff'}) requested changes to ${existing.brand} ${existing.model}.`,
+            type: 'SYSTEM',
+          },
+        });
+      }
+
+      await logAudit({
+        user,
+        action: 'UPDATE',
+        module: 'VEHICLES',
+        recordId: invReq.id,
+        newValue: `Submitted approval request to EDIT vehicle ${existing.brand} ${existing.model}`,
+      });
+
+      return NextResponse.json({
+        success: true,
+        pendingApproval: true,
+        requestId: invReq.id,
+        message: 'Changes submitted to Admin for approval. They will take effect once approved by Admin.',
+      });
+    }
 
     const updatePayload: any = {};
     if (data.brand !== undefined) updatePayload.brand = data.brand;
@@ -364,8 +468,10 @@ export async function DELETE(req: NextRequest) {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const canDelete = await hasPermission('vehicles', 'delete', user);
-    if (!canDelete) return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
+    const canView = await hasPermission('vehicles', 'view', user);
+    if (!canDelete && !canView) return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
 
+    const scope = getRoleScope(user);
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
 
@@ -373,6 +479,55 @@ export async function DELETE(req: NextRequest) {
 
     const existing = await prisma.vehicle.findUnique({ where: { id } });
     if (!existing) return NextResponse.json({ error: 'Vehicle not found' }, { status: 404 });
+
+    // If not admin, route to inventory approval request
+    if (!scope.isGlobalAdmin) {
+      const summary = `Remove Vehicle: ${existing.brand} ${existing.model} (₹${existing.price})`;
+
+      const invReq = await prisma.inventoryRequest.create({
+        data: {
+          requestType: 'DELETE',
+          status: 'PENDING',
+          module: 'VEHICLES',
+          targetVehicleId: id,
+          summary,
+          payload: JSON.stringify({ id, brand: existing.brand, model: existing.model, price: existing.price }),
+          requestedById: user.id,
+        },
+      });
+
+      const adminUsers = await prisma.user.findMany({
+        where: {
+          role: { code: { in: ['MAIN_ADMIN', 'SUPER_ADMIN', 'ADMIN'] } },
+          active: true,
+        },
+      });
+      for (const admin of adminUsers) {
+        await prisma.notification.create({
+          data: {
+            userId: admin.id,
+            title: 'Inventory Deletion Approval Request',
+            message: `${user.name} requested to REMOVE ${existing.brand} ${existing.model} from inventory.`,
+            type: 'SYSTEM',
+          },
+        });
+      }
+
+      await logAudit({
+        user,
+        action: 'DELETE',
+        module: 'VEHICLES',
+        recordId: invReq.id,
+        newValue: `Submitted approval request to REMOVE vehicle ${existing.brand} ${existing.model}`,
+      });
+
+      return NextResponse.json({
+        success: true,
+        pendingApproval: true,
+        requestId: invReq.id,
+        message: 'Removal request submitted to Admin for approval. Vehicle will be removed once approved.',
+      });
+    }
 
     // Clean up dependent child records if needed
     await prisma.vehicleImage.deleteMany({ where: { vehicleId: id } });

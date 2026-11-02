@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getSessionUser, hasPermission } from '@/lib/auth';
+import { getSessionUser, hasPermission, getRoleScope } from '@/lib/auth';
 import { logAudit } from '@/lib/audit';
 
 export const dynamic = 'force-dynamic';
@@ -17,34 +17,54 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
     }
 
+    const scope = getRoleScope(user);
     const { searchParams } = new URL(req.url);
     const status = searchParams.get('status');
     const priority = searchParams.get('priority');
+    const source = searchParams.get('source');
+    const assignedToId = searchParams.get('assignedToId');
     const search = searchParams.get('search');
+    const fromDate = searchParams.get('fromDate');
+    const toDate = searchParams.get('toDate');
 
     const where: any = {};
     if (status && status !== 'ALL') where.status = status;
     if (priority && priority !== 'ALL') where.priority = priority;
+    if (source && source !== 'ALL') where.source = source;
 
-    // If user is sales executive without manage rights, only see their assigned leads
-    if (user.roleCode === 'SALES_EXECUTIVE') {
+    // Strict role-based scoping: Sales Executives can ONLY see assigned leads
+    if (scope.isSalesExecutive) {
       where.assignedToId = user.id;
+    } else if (assignedToId && assignedToId !== 'ALL') {
+      where.assignedToId = assignedToId;
+    }
+
+    // Date range filter
+    if (fromDate || toDate) {
+      where.createdAt = {};
+      if (fromDate) where.createdAt.gte = new Date(fromDate);
+      if (toDate) {
+        const end = new Date(toDate);
+        end.setHours(23, 59, 59, 999);
+        where.createdAt.lte = end;
+      }
     }
 
     if (search) {
       where.OR = [
-        { customerName: { contains: search } },
+        { customerName: { contains: search, mode: 'insensitive' } },
         { mobile: { contains: search } },
-        { vehicleModel: { contains: search } },
-        { leadNumber: { contains: search } },
+        { vehicleModel: { contains: search, mode: 'insensitive' } },
+        { leadNumber: { contains: search, mode: 'insensitive' } },
       ];
     }
 
     const leads = await prisma.lead.findMany({
       where,
       include: {
-        assignedTo: { select: { id: true, name: true, email: true } },
+        assignedTo: { select: { id: true, name: true, email: true, phone: true } },
         customer: true,
+        followUps: { orderBy: { scheduledDate: 'desc' }, take: 5 },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -58,8 +78,9 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const user = await getSessionUser();
     const body = await req.json();
-    const { customerName, mobile, email, vehicleModel, budget, source, notes } = body;
+    const { customerName, mobile, email, vehicleModel, budget, source, notes, followUpDate, assignedToId } = body;
 
     if (!customerName || !mobile || !vehicleModel) {
       return NextResponse.json({ error: 'Customer name, mobile and vehicle model are required' }, { status: 400 });
@@ -73,7 +94,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check if customer already exists or create new
+    // Check or create customer
     let customer = await prisma.customer.findUnique({
       where: { mobile: cleanMobile },
     });
@@ -95,15 +116,29 @@ export async function POST(req: NextRequest) {
     const leadCount = await prisma.lead.count();
     const leadNumber = `LD-${new Date().getFullYear()}-${String(leadCount + 101).padStart(3, '0')}`;
 
-    // Auto-assign to an active sales executive round-robin
-    const salesExecs = await prisma.user.findMany({
-      where: {
-        active: true,
-        role: { code: { in: ['SALES_EXECUTIVE', 'SALES_MANAGER'] } },
-      },
-    });
+    // Assignment logic:
+    // 1. If assignedToId specified and creator has assign permission, use that
+    // 2. If logged in user is Sales Executive, assign to themselves
+    // 3. Otherwise round-robin among active sales executives
+    let assignedUserId: string | null = null;
+    if (user) {
+      const scope = getRoleScope(user);
+      if (scope.isSalesExecutive) {
+        assignedUserId = user.id;
+      } else if (assignedToId && (scope.isGlobalAdmin || scope.isSalesManager)) {
+        assignedUserId = assignedToId;
+      }
+    }
 
-    const assignedUser = salesExecs.length > 0 ? salesExecs[leadCount % salesExecs.length] : null;
+    if (!assignedUserId) {
+      const salesExecs = await prisma.user.findMany({
+        where: {
+          active: true,
+          role: { code: { in: ['SALES_EXECUTIVE', 'SALES_MANAGER'] } },
+        },
+      });
+      assignedUserId = salesExecs.length > 0 ? salesExecs[leadCount % salesExecs.length].id : null;
+    }
 
     const lead = await prisma.lead.create({
       data: {
@@ -113,26 +148,52 @@ export async function POST(req: NextRequest) {
         email: email?.trim() || null,
         vehicleModel: vehicleModel.trim(),
         budget: budget?.trim() || null,
-        source: source || 'WEBSITE',
+        source: source || (user ? 'WALK_IN' : 'WEBSITE'),
         status: 'NEW',
         priority: 'MEDIUM',
         notes: notes?.trim() || null,
         customerId: customer.id,
-        assignedToId: assignedUser?.id || null,
-        followUpDate: new Date(Date.now() + 24 * 3600 * 1000), // Default 24h
+        assignedToId: assignedUserId,
+        followUpDate: followUpDate ? new Date(followUpDate) : new Date(Date.now() + 24 * 3600 * 1000),
       },
     });
 
-    // Create Notification for the sales team
-    await prisma.notification.create({
-      data: {
-        title: `New Lead: ${customerName}`,
-        message: `Enquired for ${vehicleModel}. Mobile: ${cleanMobile}`,
-        type: 'LEAD',
-        link: '/admin/leads',
-        userId: assignedUser?.id || null,
-      },
-    });
+    // Create initial FollowUp record
+    if (lead.followUpDate) {
+      await prisma.followUp.create({
+        data: {
+          leadId: lead.id,
+          customerId: customer.id,
+          scheduledDate: lead.followUpDate,
+          notes: notes ? `Initial: ${notes}` : 'Initial follow-up',
+          userId: assignedUserId,
+          status: 'PENDING',
+        },
+      });
+    }
+
+    // In-app Notification for assigned staff
+    if (assignedUserId) {
+      await prisma.notification.create({
+        data: {
+          title: `New Lead: ${customerName}`,
+          message: `Enquired for ${vehicleModel}. Mobile: ${cleanMobile}`,
+          type: 'LEAD',
+          link: '/admin/leads',
+          userId: assignedUserId,
+        },
+      });
+    }
+
+    if (user) {
+      await logAudit({
+        user,
+        action: 'CREATE',
+        module: 'LEADS',
+        recordId: lead.leadNumber,
+        newValue: `Created lead for ${lead.customerName} (${lead.vehicleModel})`,
+      });
+    }
 
     return NextResponse.json({
       success: true,
@@ -157,23 +218,41 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
     }
 
+    const scope = getRoleScope(user);
     const body = await req.json();
-    const { id, status, priority, assignedToId, followUpDate, notes } = body;
+    const { id, status, priority, assignedToId, followUpDate, notes, followUpNotes } = body;
 
     if (!id) {
       return NextResponse.json({ error: 'Lead ID is required' }, { status: 400 });
     }
 
-    const existingLead = await prisma.lead.findUnique({ where: { id } });
+    const existingLead = await prisma.lead.findUnique({
+      where: { id },
+      include: { customer: true },
+    });
     if (!existingLead) {
       return NextResponse.json({ error: 'Lead not found' }, { status: 404 });
+    }
+
+    // Sales Executive can only edit leads assigned to them
+    if (scope.isSalesExecutive && existingLead.assignedToId !== user.id) {
+      return NextResponse.json({ error: 'Permission denied: Lead is not assigned to you' }, { status: 403 });
     }
 
     const updateData: any = {};
     if (status) updateData.status = status;
     if (priority) updateData.priority = priority;
-    if (assignedToId !== undefined) updateData.assignedToId = assignedToId || null;
-    if (followUpDate !== undefined) updateData.followUpDate = followUpDate ? new Date(followUpDate) : null;
+
+    // Only Admin or Sales Manager can reassign leads
+    if (assignedToId !== undefined) {
+      if (scope.isGlobalAdmin || scope.isSalesManager) {
+        updateData.assignedToId = assignedToId || null;
+      }
+    }
+
+    if (followUpDate !== undefined) {
+      updateData.followUpDate = followUpDate ? new Date(followUpDate) : null;
+    }
     if (notes !== undefined) updateData.notes = notes;
 
     const updatedLead = await prisma.lead.update({
@@ -181,10 +260,24 @@ export async function PUT(req: NextRequest) {
       data: updateData,
       include: {
         assignedTo: { select: { id: true, name: true, email: true } },
+        customer: true,
       },
     });
 
-    // Audit log
+    // Record follow-up entry if followUpDate was set or followUpNotes provided
+    if (followUpDate || followUpNotes) {
+      await prisma.followUp.create({
+        data: {
+          leadId: existingLead.id,
+          customerId: existingLead.customerId,
+          scheduledDate: followUpDate ? new Date(followUpDate) : new Date(),
+          notes: followUpNotes || notes || `Follow-up updated to status: ${status || existingLead.status}`,
+          userId: user.id,
+          status: 'PENDING',
+        },
+      });
+    }
+
     await logAudit({
       user,
       action: 'UPDATE',
@@ -210,7 +303,7 @@ export async function DELETE(req: NextRequest) {
 
     const canDelete = await hasPermission('leads', 'delete', user);
     if (!canDelete) {
-      return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
+      return NextResponse.json({ error: 'Permission denied: Delete requires admin privilege' }, { status: 403 });
     }
 
     const { searchParams } = new URL(req.url);
@@ -224,6 +317,8 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'Lead not found' }, { status: 404 });
     }
 
+    // Clean up associated followups first
+    await prisma.followUp.deleteMany({ where: { leadId: id } });
     await prisma.lead.delete({ where: { id } });
 
     await logAudit({

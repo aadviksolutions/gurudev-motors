@@ -51,20 +51,24 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   return (
-    <div className="business-portal min-h-screen bg-[#F8FAFC]">
-      <AdminSidebar
-        user={user}
-        mobileOpen={mobileSidebarOpen}
-        onCloseMobile={() => setMobileSidebarOpen(false)}
-      />
-
-      <div className="lg:pl-64 flex flex-col min-h-screen">
-        <AdminHeader
+    <div className="business-portal min-h-screen bg-[#F8FAFC] print:bg-white print:min-h-0">
+      <div className="print:hidden">
+        <AdminSidebar
           user={user}
-          mobileSidebarOpen={mobileSidebarOpen}
-          onOpenMobileSidebar={() => setMobileSidebarOpen(true)}
+          mobileOpen={mobileSidebarOpen}
+          onCloseMobile={() => setMobileSidebarOpen(false)}
         />
-        <main className="flex-1 p-4 sm:p-6 lg:p-8">
+      </div>
+
+      <div className="lg:pl-64 print:pl-0 flex flex-col min-h-screen print:min-h-0">
+        <div className="print:hidden">
+          <AdminHeader
+            user={user}
+            mobileSidebarOpen={mobileSidebarOpen}
+            onOpenMobileSidebar={() => setMobileSidebarOpen(true)}
+          />
+        </div>
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 print:p-0 print:m-0">
           {children}
         </main>
       </div>

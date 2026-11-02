@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useParams } from 'next/navigation';
 import {
   ArrowRight,
@@ -34,11 +35,13 @@ export default function VehicleDetailPage() {
   const [error, setError] = useState('');
   const [retry, setRetry] = useState(0);
   const [testVehicle, setTestVehicle] = useState<ShowroomVehicle | null>(null);
+  const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
   useEffect(() => {
     const abort = new AbortController();
     setLoading(true);
     setError('');
     setVehicle(null);
+    setSelectedImageUrl(null);
     getPublicVehicle(id, abort.signal)
       .then((data) => {
         setVehicle(data?.vehicle || null);
@@ -137,9 +140,42 @@ export default function VehicleDetailPage() {
           <span>{name}</span>
         </nav>
         <div className="detail-grid">
-          <div className="detail-visual">
-            <VehicleVisual vehicle={vehicle} priority />
-            <span className="vehicle-badge">{category}</span>
+          <div className="detail-visual flex flex-col gap-3">
+            <div className="relative w-full">
+              <VehicleVisual vehicle={vehicle} imageUrl={selectedImageUrl || vehicle.imageUrl || undefined} priority />
+              <span className="vehicle-badge">{category}</span>
+            </div>
+
+            {/* Multiple Vehicle Photos Carousel / Thumbnails Strip */}
+            {Array.isArray(vehicle.images) && vehicle.images.length > 1 && (
+              <div className="flex gap-2 overflow-x-auto py-1 px-0.5 max-w-full">
+                {vehicle.images.map((img: any, idx: number) => {
+                  const imgUrl = typeof img === 'string' ? img : img.url;
+                  const isActive = (selectedImageUrl || vehicle.imageUrl) === imgUrl;
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setSelectedImageUrl(imgUrl)}
+                      title={`View angle ${idx + 1}`}
+                      className={`relative w-20 h-14 rounded-xl overflow-hidden border-2 transition-all shrink-0 bg-slate-900/5 ${
+                        isActive
+                          ? 'border-gm-red ring-2 ring-gm-red/30 scale-105 shadow-sm'
+                          : 'border-gm-line opacity-75 hover:opacity-100'
+                      }`}
+                    >
+                      <Image
+                        src={imgUrl}
+                        alt={`${name} angle ${idx + 1}`}
+                        fill
+                        className="object-cover"
+                        unoptimized
+                      />
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
           <div className="detail-summary">
             <span className="eyebrow">

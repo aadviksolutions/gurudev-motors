@@ -3,7 +3,7 @@ import { AuthUser } from './auth';
 const allModules = [
   'dashboard', 'leads', 'customers', 'vehicles', 'sales', 'bookings',
   'test_drives', 'service', 'accounts', 'reports', 'employees', 'roles',
-  'content', 'settings', 'audit_logs'
+  'content', 'settings', 'audit_logs', 'exchange', 'finance', 'gallery', 'offers', 'upload'
 ];
 
 function buildPermissions(config: {

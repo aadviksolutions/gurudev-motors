@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import {
   ArrowUpRight,
   Clock3,
@@ -10,6 +11,27 @@ import Link from 'next/link';
 import PageHeading from '@/components/PageHeading';
 import PublicRequestForm from '@/components/PublicRequestForm';
 import { CONTACT_INFO } from '@/lib/constants';
+
+export const metadata: Metadata = {
+  title: 'Contact Gurudev Motors | Showroom & Workshop Location Raipur',
+  description:
+    'Visit Gurudev Motors at Mahadevghat Chowk, Raipura, Raipur (C.G.). Call +91 7000619808 for vehicle enquiries, test drive booking, finance assistance, and workshop appointments.',
+  keywords: [
+    'Contact Gurudev Motors',
+    'Gurudev Motors phone number',
+    'Gurudev Motors address Raipur',
+    'Two wheeler showroom Mahadevghat Raipur',
+    'Gurudev Motors Raipur contact',
+  ],
+  alternates: {
+    canonical: 'https://gurudevmotors.com/contact',
+  },
+  openGraph: {
+    title: 'Contact Gurudev Motors | Showroom & Workshop Location Raipur',
+    description: 'Get in touch with Gurudev Motors team for new sales, exchange, and service in Raipur.',
+    url: 'https://gurudevmotors.com/contact',
+  },
+};
 export default function ContactPage() {
   return (
     <>

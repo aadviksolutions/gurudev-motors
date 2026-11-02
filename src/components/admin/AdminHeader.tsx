@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import Image from 'next/image';
 import { Menu, Bell, LogOut, CheckCircle2, Shield, ExternalLink } from 'lucide-react';
 import { AuthUser } from '@/lib/auth';
 
@@ -70,7 +72,25 @@ export default function AdminHeader({ user, mobileSidebarOpen, onOpenMobileSideb
           <Menu className="w-5 h-5" />
         </button>
 
-        <div className="hidden sm:flex items-center gap-2 text-xs font-bold text-gm-muted">
+        <Link href="/admin" className="flex items-center gap-2.5">
+          <div className="h-9 w-auto relative flex items-center">
+            <Image
+              src="/images/logo.jpeg"
+              alt="Gurudev Motors Logo"
+              width={120}
+              height={40}
+              className="h-8 sm:h-9 w-auto object-contain rounded-md"
+              priority
+            />
+          </div>
+          <div className="hidden sm:block border-l border-gm-line pl-2.5">
+            <span className="text-[10px] font-bold text-gm-muted uppercase tracking-wider block">Gurudev Motors</span>
+            <span className="text-xs font-black text-gm-navy uppercase tracking-wider block leading-none">
+              {user.roleName || 'Portal'}
+            </span>
+          </div>
+        </Link>
+        <div className="hidden">
           <span>Gurudev Motors</span>
           <span>/</span>
           <span className="text-gm-navy font-black uppercase tracking-wider">{user.roleName}</span>

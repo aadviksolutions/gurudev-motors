@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
@@ -41,7 +42,7 @@ export default function AdminSidebar({ user, mobileOpen, onCloseMobile }: AdminS
   // Check permission helper
   const canAccess = (module: string) => {
     if (isMainAdmin) return true;
-    return Boolean(user.permissions[module]?.view || user.permissions['leads']?.view);
+    return Boolean(user.permissions[module]?.view);
   };
 
   const menuSections = [
@@ -102,8 +103,15 @@ export default function AdminSidebar({ user, mobileOpen, onCloseMobile }: AdminS
           {/* Logo / Brand header */}
           <div className="h-16 px-6 flex items-center justify-between border-b border-white/10">
             <Link href="/admin" className="flex items-center gap-2">
-              <span className="w-8 h-8 rounded-lg bg-gm-red text-white font-black flex items-center justify-center text-sm shadow">
-                GM
+              <span className="h-8 w-auto px-1.5 rounded-lg bg-white flex items-center justify-center shadow">
+                <Image
+                  src="/images/logo.jpeg"
+                  alt="Gurudev Motors"
+                  width={90}
+                  height={30}
+                  className="h-6 w-auto object-contain rounded"
+                  priority
+                />
               </span>
               <div>
                 <b className="text-sm font-black text-white tracking-tight block">

@@ -1,6 +1,29 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowUpRight, BatteryCharging, Settings2, Wrench } from 'lucide-react';
 import PageHeading from '@/components/PageHeading';
+
+export const metadata: Metadata = {
+  title: 'Two-Wheeler Service & Workshop in Raipur | Gurudev Motors',
+  description:
+    'Authorised two-wheeler servicing, periodic maintenance, engine repairs, battery diagnostics, and genuine spare parts at Gurudev Motors Raipura, Raipur.',
+  keywords: [
+    'Bike service Raipur',
+    'Two wheeler service Raipura',
+    'Scooty repair Raipur',
+    'Motorcycle workshop Raipur',
+    'Activa servicing Raipur',
+  ],
+  alternates: {
+    canonical: 'https://gurudevmotors.com/services',
+  },
+  openGraph: {
+    title: 'Two-Wheeler Service & Workshop in Raipur | Gurudev Motors',
+    description: 'Expert servicing, genuine spares, and transparent estimates at Raipura, Raipur.',
+    url: 'https://gurudevmotors.com/services',
+  },
+};
+
 export default function ServicesPage() {
   return (
     <>

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getSessionUser, hasPermission } from '@/lib/auth';
+import { getSessionUser, hasPermission, getRoleScope } from '@/lib/auth';
 import { logAudit } from '@/lib/audit';
 
 export const dynamic = 'force-dynamic';
@@ -13,11 +13,50 @@ export async function GET(req: NextRequest) {
     const canView = await hasPermission('sales', 'view', user);
     if (!canView) return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
 
+    const scope = getRoleScope(user);
+    const { searchParams } = new URL(req.url);
+    const paymentStatus = searchParams.get('paymentStatus');
+    const salespersonId = searchParams.get('salespersonId');
+    const search = searchParams.get('search');
+    const fromDate = searchParams.get('fromDate');
+    const toDate = searchParams.get('toDate');
+
+    const where: any = {};
+    if (paymentStatus && paymentStatus !== 'ALL') where.paymentStatus = paymentStatus;
+
+    // Role scoping: Sales Executive only sees sales where they are the salesperson
+    if (scope.isSalesExecutive) {
+      where.salespersonId = user.id;
+    } else if (salespersonId && salespersonId !== 'ALL') {
+      where.salespersonId = salespersonId;
+    }
+
+    if (fromDate || toDate) {
+      where.createdAt = {};
+      if (fromDate) where.createdAt.gte = new Date(fromDate);
+      if (toDate) {
+        const end = new Date(toDate);
+        end.setHours(23, 59, 59, 999);
+        where.createdAt.lte = end;
+      }
+    }
+
+    if (search) {
+      where.OR = [
+        { invoiceNumber: { contains: search, mode: 'insensitive' } },
+        { customer: { name: { contains: search, mode: 'insensitive' } } },
+        { customer: { mobile: { contains: search } } },
+        { vehicle: { model: { contains: search, mode: 'insensitive' } } },
+        { vehicle: { brand: { contains: search, mode: 'insensitive' } } },
+      ];
+    }
+
     const sales = await prisma.sale.findMany({
+      where,
       include: {
         customer: true,
         vehicle: true,
-        salesperson: { select: { id: true, name: true } },
+        salesperson: { select: { id: true, name: true, phone: true } },
         invoices: true,
       },
       orderBy: { createdAt: 'desc' },
@@ -37,6 +76,7 @@ export async function POST(req: NextRequest) {
     const canCreate = await hasPermission('sales', 'create', user);
     if (!canCreate) return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
 
+    const scope = getRoleScope(user);
     const body = await req.json();
     const {
       customerId,
@@ -49,6 +89,7 @@ export async function POST(req: NextRequest) {
       paymentStatus = 'COMPLETED',
       deliveryDate,
       notes,
+      salespersonId,
     } = body;
 
     if (!customerId || !vehicleId || !vehiclePrice) {
@@ -61,11 +102,16 @@ export async function POST(req: NextRequest) {
     const fin = Number(financeAmount);
     const book = Number(bookingAmount);
 
-    const totalAmount = price - disc - exch;
-    const balanceAmount = totalAmount - fin - book;
+    const totalAmount = Math.max(0, price - disc - exch);
+    const balanceAmount = Math.max(0, totalAmount - fin - book);
 
     const count = await prisma.sale.count();
     const invoiceNumber = `INV-${new Date().getFullYear()}-${String(count + 43).padStart(4, '0')}`;
+
+    let assignedSalesperson = user.id;
+    if ((scope.isGlobalAdmin || scope.isSalesManager) && salespersonId) {
+      assignedSalesperson = salespersonId;
+    }
 
     const sale = await prisma.sale.create({
       data: {
@@ -77,16 +123,17 @@ export async function POST(req: NextRequest) {
         exchangeValue: exch,
         financeAmount: fin,
         bookingAmount: book,
-        balanceAmount: Math.max(0, balanceAmount),
+        balanceAmount,
         totalAmount,
         paymentStatus,
-        salespersonId: user.id,
+        salespersonId: assignedSalesperson,
         deliveryDate: deliveryDate ? new Date(deliveryDate) : new Date(),
         notes: notes || null,
       },
       include: {
         customer: true,
         vehicle: true,
+        salesperson: { select: { id: true, name: true, phone: true } },
       },
     });
 
@@ -141,6 +188,57 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, sale, invoice });
   } catch (error: any) {
     console.error('Record sale error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+export async function PUT(req: NextRequest) {
+  try {
+    const user = await getSessionUser();
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const canEdit = await hasPermission('sales', 'edit', user);
+    if (!canEdit) return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
+
+    const scope = getRoleScope(user);
+    const body = await req.json();
+    const { id, paymentStatus, deliveryDate, notes } = body;
+
+    if (!id) return NextResponse.json({ error: 'Sale ID is required' }, { status: 400 });
+
+    const existing = await prisma.sale.findUnique({ where: { id } });
+    if (!existing) return NextResponse.json({ error: 'Sale record not found' }, { status: 404 });
+
+    if (scope.isSalesExecutive && existing.salespersonId !== user.id) {
+      return NextResponse.json({ error: 'Permission denied: Sale is not assigned to you' }, { status: 403 });
+    }
+
+    const updateData: any = {};
+    if (paymentStatus) updateData.paymentStatus = paymentStatus;
+    if (deliveryDate !== undefined) updateData.deliveryDate = deliveryDate ? new Date(deliveryDate) : null;
+    if (notes !== undefined) updateData.notes = notes;
+
+    const updated = await prisma.sale.update({
+      where: { id },
+      data: updateData,
+      include: {
+        customer: true,
+        vehicle: true,
+        salesperson: { select: { id: true, name: true, phone: true } },
+      },
+    });
+
+    await logAudit({
+      user,
+      action: 'UPDATE',
+      module: 'SALES',
+      recordId: existing.invoiceNumber,
+      oldValue: `Payment: ${existing.paymentStatus}`,
+      newValue: `Payment: ${updated.paymentStatus}`,
+    });
+
+    return NextResponse.json({ success: true, sale: updated });
+  } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

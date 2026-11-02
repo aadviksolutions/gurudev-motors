@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getSessionUser, hasPermission } from '@/lib/auth';
+import { getSessionUser, hasPermission, getRoleScope } from '@/lib/auth';
 import { logAudit } from '@/lib/audit';
 
 export const dynamic = 'force-dynamic';
@@ -10,22 +10,44 @@ export async function GET(req: NextRequest) {
     const user = await getSessionUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const canView = await hasPermission('service', 'view', user) || await hasPermission('leads', 'view', user);
+    const canView = await hasPermission('service', 'view', user);
     if (!canView) return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
 
+    const scope = getRoleScope(user);
     const { searchParams } = new URL(req.url);
     const status = searchParams.get('status');
+    const advisorId = searchParams.get('advisorId');
     const search = searchParams.get('search');
+    const fromDate = searchParams.get('fromDate');
+    const toDate = searchParams.get('toDate');
 
     const where: any = {};
     if (status && status !== 'ALL') where.status = status;
+
+    // Role-based scoping: Service Executive only sees assigned appointments
+    if (scope.isServiceExecutive) {
+      where.advisorId = user.id;
+    } else if (advisorId && advisorId !== 'ALL') {
+      where.advisorId = advisorId;
+    }
+
+    if (fromDate || toDate) {
+      where.preferredDate = {};
+      if (fromDate) where.preferredDate.gte = new Date(fromDate);
+      if (toDate) {
+        const end = new Date(toDate);
+        end.setHours(23, 59, 59, 999);
+        where.preferredDate.lte = end;
+      }
+    }
+
     if (search) {
       where.OR = [
-        { customerName: { contains: search } },
+        { customerName: { contains: search, mode: 'insensitive' } },
         { mobile: { contains: search } },
-        { vehicleModel: { contains: search } },
-        { regNumber: { contains: search } },
-        { bookingNumber: { contains: search } },
+        { vehicleModel: { contains: search, mode: 'insensitive' } },
+        { regNumber: { contains: search, mode: 'insensitive' } },
+        { bookingNumber: { contains: search, mode: 'insensitive' } },
       ];
     }
 
@@ -58,6 +80,7 @@ export async function POST(req: NextRequest) {
       preferredDate,
       preferredTime = '10:00 AM',
       additionalRequirement,
+      advisorId,
     } = body;
 
     if (!customerName || !mobile || !vehicleModel || !preferredDate) {
@@ -92,13 +115,16 @@ export async function POST(req: NextRequest) {
     const bookingNumber = `GM-SB-${new Date().getFullYear()}-${String(count + 101).padStart(3, '0')}`;
 
     // 3. Assign Workshop Advisor
-    const advisors = await prisma.user.findMany({
-      where: {
-        active: true,
-        role: { code: { in: ['SERVICE_EXECUTIVE', 'SERVICE_MANAGER', 'MAIN_ADMIN', 'SUPER_ADMIN'] } },
-      },
-    });
-    const assignedAdvisor = advisors.length > 0 ? advisors[count % advisors.length] : null;
+    let assignedAdvisorId = advisorId || null;
+    if (!assignedAdvisorId) {
+      const advisors = await prisma.user.findMany({
+        where: {
+          active: true,
+          role: { code: { in: ['SERVICE_EXECUTIVE', 'SERVICE_MANAGER'] } },
+        },
+      });
+      assignedAdvisorId = advisors.length > 0 ? advisors[count % advisors.length].id : null;
+    }
 
     // 4. Create Service Booking Record
     const booking = await prisma.serviceBooking.create({
@@ -115,8 +141,12 @@ export async function POST(req: NextRequest) {
         additionalRequirement: additionalRequirement?.trim() || null,
         status: 'NEW',
         customerId: customer.id,
-        advisorId: assignedAdvisor?.id || null,
-        notes: `Booked via website for ${preferredTime}`,
+        advisorId: assignedAdvisorId,
+        notes: `Booked for ${preferredTime}`,
+      },
+      include: {
+        customer: true,
+        advisor: { select: { id: true, name: true, phone: true } },
       },
     });
 
@@ -138,27 +168,29 @@ export async function POST(req: NextRequest) {
         priority: 'MEDIUM',
         notes: sNotes,
         customerId: customer.id,
-        assignedToId: assignedAdvisor?.id || null,
+        assignedToId: assignedAdvisorId,
         followUpDate: new Date(preferredDate),
       },
     });
 
     // 6. Create Staff Notification
-    await prisma.notification.create({
-      data: {
-        title: `Service Booking: ${bookingNumber}`,
-        message: `${customerName} booked ${serviceType} for ${vehicleModel} on ${new Date(preferredDate).toLocaleDateString()}. Mobile: ${cleanMobile}`,
-        type: 'SERVICE',
-        link: '/admin/service',
-        userId: assignedAdvisor?.id || null,
-      },
-    });
+    if (assignedAdvisorId) {
+      await prisma.notification.create({
+        data: {
+          title: `Service Booking: ${bookingNumber}`,
+          message: `${customerName} booked ${serviceType} for ${vehicleModel} on ${new Date(preferredDate).toLocaleDateString()}. Mobile: ${cleanMobile}`,
+          type: 'SERVICE',
+          link: '/admin/service',
+          userId: assignedAdvisorId,
+        },
+      });
+    }
 
     return NextResponse.json({
       success: true,
       booking,
       bookingNumber,
-      message: `Service appointment ${bookingNumber} booked successfully! Our workshop manager will confirm your slot.`,
+      message: `Service appointment ${bookingNumber} booked successfully! Our workshop advisor will confirm your slot.`,
     });
   } catch (error: any) {
     console.error('Create service booking error:', error);
@@ -171,9 +203,10 @@ export async function PUT(req: NextRequest) {
     const user = await getSessionUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const canEdit = await hasPermission('service', 'edit', user) || await hasPermission('leads', 'edit', user);
+    const canEdit = await hasPermission('service', 'edit', user);
     if (!canEdit) return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
 
+    const scope = getRoleScope(user);
     const body = await req.json();
     const {
       id,
@@ -189,12 +222,21 @@ export async function PUT(req: NextRequest) {
     const existing = await prisma.serviceBooking.findUnique({ where: { id } });
     if (!existing) return NextResponse.json({ error: 'Service booking not found' }, { status: 404 });
 
+    // Service Executive can only edit their assigned appointments
+    if (scope.isServiceExecutive && existing.advisorId !== user.id) {
+      return NextResponse.json({ error: 'Permission denied: Appointment is not assigned to you' }, { status: 403 });
+    }
+
     const updateData: any = {};
     if (status !== undefined) updateData.status = status;
-    if (advisorId !== undefined) updateData.advisorId = advisorId || null;
     if (preferredDate !== undefined) updateData.preferredDate = new Date(preferredDate);
     if (preferredTime !== undefined) updateData.preferredTime = preferredTime;
     if (notes !== undefined) updateData.notes = notes;
+
+    // Only Admin or Service Manager can reassign advisor
+    if (advisorId !== undefined && (scope.isGlobalAdmin || scope.isServiceManager)) {
+      updateData.advisorId = advisorId || null;
+    }
 
     const updated = await prisma.serviceBooking.update({
       where: { id },
@@ -226,7 +268,7 @@ export async function DELETE(req: NextRequest) {
     const user = await getSessionUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const canDelete = await hasPermission('service', 'delete', user) || await hasPermission('leads', 'delete', user);
+    const canDelete = await hasPermission('service', 'delete', user);
     if (!canDelete) return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
 
     const { searchParams } = new URL(req.url);

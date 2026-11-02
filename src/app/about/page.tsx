@@ -1,7 +1,29 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowUpRight, Bike, MapPin, RefreshCw, Wrench } from 'lucide-react';
 import PageHeading from '@/components/PageHeading';
 import { CONTACT_INFO, VEHICLE_BRANDS } from '@/lib/constants';
+
+export const metadata: Metadata = {
+  title: 'About Gurudev Motors | Premier Two-Wheeler Showroom in Raipur',
+  description:
+    'Learn about Gurudev Motors Raipur — multi-brand dealership for Hero, Honda, TVS, Bajaj, and Suzuki two-wheelers. Committed to transparent pricing, finance, and reliable service in Raipura, Raipur.',
+  keywords: [
+    'About Gurudev Motors',
+    'Two wheeler dealer Raipur',
+    'Multi brand bike showroom Raipur',
+    'Gurudev Motors Raipura',
+    'Best bike dealer Raipur',
+  ],
+  alternates: {
+    canonical: 'https://gurudevmotors.com/about',
+  },
+  openGraph: {
+    title: 'About Gurudev Motors | Premier Two-Wheeler Showroom in Raipur',
+    description: 'Serving riders across Raipur and Chhattisgarh with multi-brand showroom choice and genuine care.',
+    url: 'https://gurudevmotors.com/about',
+  },
+};
 export default function AboutPage() {
   return (
     <>

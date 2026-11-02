@@ -1,8 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Tag, Plus, CheckCircle, XCircle } from 'lucide-react';
+import Image from 'next/image';
+import { Tag, Plus, CheckCircle, XCircle, Trash2 } from 'lucide-react';
 import AdminLayout from '@/components/admin/AdminLayout';
+import ImageUpload from '@/components/admin/ImageUpload';
 import { formatDate } from '@/lib/utils';
 
 export default function AdminOffersPage() {
@@ -14,6 +16,8 @@ export default function AdminOffersPage() {
   const [badge, setBadge] = useState('SPECIAL DEAL');
   const [discountText, setDiscountText] = useState('');
   const [description, setDescription] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
+  const [exchangeBonus, setExchangeBonus] = useState('');
   const [terms, setTerms] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -47,6 +51,8 @@ export default function AdminOffersPage() {
           badge,
           discountText,
           description,
+          imageUrl: imageUrl || null,
+          exchangeBonus: exchangeBonus ? Number(exchangeBonus) : 0,
           terms,
           active: true,
         }),
@@ -55,6 +61,9 @@ export default function AdminOffersPage() {
       setTitle('');
       setDiscountText('');
       setDescription('');
+      setImageUrl('');
+      setExchangeBonus('');
+      setTerms('');
       fetchOffers();
     } catch (err) {
       console.error(err);
@@ -70,6 +79,16 @@ export default function AdminOffersPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, active: !current }),
       });
+      fetchOffers();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this promotional offer?')) return;
+    try {
+      await fetch(`/api/offers?id=${id}`, { method: 'DELETE' });
       fetchOffers();
     } catch (err) {
       console.error(err);
@@ -97,66 +116,73 @@ export default function AdminOffersPage() {
           </button>
         </div>
 
-        <div className="bg-white rounded-2xl border border-gm-line shadow-xs overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-gm-soft/70 text-gm-muted font-bold uppercase text-[10px]">
-                <tr>
-                  <th className="p-3.5">Badge</th>
-                  <th className="p-3.5">Title</th>
-                  <th className="p-3.5">Discount Offer</th>
-                  <th className="p-3.5">Description</th>
-                  <th className="p-3.5">Status</th>
-                  <th className="p-3.5 text-right">Toggle Live</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gm-line/60">
-                {loading ? (
-                  <tr>
-                    <td colSpan={6} className="p-8 text-center text-gm-muted">Loading offers...</td>
-                  </tr>
-                ) : (
-                  offers.map((offer) => (
-                    <tr key={offer.id} className="hover:bg-gm-soft/40 transition-colors">
-                      <td className="p-3.5">
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-red-50 text-gm-red border border-red-200">
-                          {offer.badge || 'DEAL'}
-                        </span>
-                      </td>
-                      <td className="p-3.5 font-bold text-gm-navy">{offer.title}</td>
-                      <td className="p-3.5 font-black text-gm-red">{offer.discountText}</td>
-                      <td className="p-3.5 text-gm-muted max-w-sm">{offer.description}</td>
-                      <td className="p-3.5">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${offer.active ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
-                          {offer.active ? 'Active' : 'Disabled'}
-                        </span>
-                      </td>
-                      <td className="p-3.5 text-right">
-                        <button
-                          onClick={() => handleToggle(offer.id, offer.active)}
-                          className="text-xs font-bold text-gm-navy hover:underline"
-                        >
-                          {offer.active ? 'Disable' : 'Enable'}
-                        </button>
-                      </td>
-                    </tr>
-                  ))
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {offers.map((offer) => (
+            <div
+              key={offer.id}
+              className="bg-white rounded-2xl border border-gm-line shadow-xs overflow-hidden flex flex-col justify-between"
+            >
+              <div>
+                {offer.imageUrl && (
+                  <div className="relative h-40 w-full bg-gm-soft border-b border-gm-line">
+                    <Image
+                      src={offer.imageUrl}
+                      alt={offer.title}
+                      fill
+                      className="object-cover"
+                      unoptimized={offer.imageUrl.startsWith('data:') || offer.imageUrl.startsWith('/uploads/')}
+                    />
+                  </div>
                 )}
-              </tbody>
-            </table>
-          </div>
+                <div className="p-5">
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-gm-red/10 text-gm-red">
+                      {offer.badge || 'OFFER'}
+                    </span>
+                    <span className={`text-[11px] font-bold px-2 py-0.5 rounded ${offer.active ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
+                      {offer.active ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
+                  <h3 className="text-base font-black text-gm-navy">{offer.title}</h3>
+                  <p className="text-xs font-bold text-gm-red mt-1">{offer.discountText}</p>
+                  <p className="text-xs text-gm-muted mt-2 line-clamp-3">{offer.description}</p>
+                  {offer.exchangeBonus > 0 && (
+                    <p className="text-[11px] font-bold text-emerald-600 mt-2">
+                      Exchange Bonus: ₹{offer.exchangeBonus.toLocaleString('en-IN')}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="p-5 pt-0 flex items-center justify-between border-t border-gm-line/50 mt-4">
+                <button
+                  onClick={() => handleToggle(offer.id, offer.active)}
+                  className="text-xs font-bold text-gm-navy hover:underline"
+                >
+                  {offer.active ? 'Deactivate' : 'Activate'}
+                </button>
+                <button
+                  onClick={() => handleDelete(offer.id)}
+                  className="text-xs font-bold text-red-600 hover:underline flex items-center gap-1"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Delete</span>
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
 
         {/* Modal */}
         {modalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-            <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full border border-gm-line shadow-2xl">
+            <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full border border-gm-line shadow-2xl max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between pb-3 border-b border-gm-line mb-4">
                 <h3 className="text-xl font-black text-gm-navy">Add Promotional Deal</h3>
                 <button onClick={() => setModalOpen(false)} className="text-gm-muted font-bold">✕</button>
               </div>
 
-              <form onSubmit={handleCreate} className="space-y-3">
+              <form onSubmit={handleCreate} className="space-y-4">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-bold text-gm-navy mb-1">Badge</label>
@@ -194,6 +220,25 @@ export default function AdminOffersPage() {
                 </div>
 
                 <div>
+                  <label className="block text-xs font-bold text-gm-navy mb-1">Exchange Bonus (₹ Optional)</label>
+                  <input
+                    type="number"
+                    value={exchangeBonus}
+                    onChange={(e) => setExchangeBonus(e.target.value)}
+                    placeholder="e.g. 3000"
+                    className="w-full px-3 py-2 rounded-xl border border-gm-line text-xs"
+                  />
+                </div>
+
+                <ImageUpload
+                  value={imageUrl}
+                  onChange={setImageUrl}
+                  label="Offer Banner / Graphic Poster"
+                  aspectRatio="wide"
+                  helperText="Upload promotional flyer, festive banner or discount poster (PNG, JPG, WebP)"
+                />
+
+                <div>
                   <label className="block text-xs font-bold text-gm-navy mb-1">Description *</label>
                   <textarea
                     value={description}
@@ -202,6 +247,17 @@ export default function AdminOffersPage() {
                     rows={3}
                     className="w-full px-3 py-2 rounded-xl border border-gm-line text-xs resize-none"
                     required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gm-navy mb-1">Terms & Conditions</label>
+                  <input
+                    type="text"
+                    value={terms}
+                    onChange={(e) => setTerms(e.target.value)}
+                    placeholder="e.g. Valid till stocks last. T&C apply."
+                    className="w-full px-3 py-2 rounded-xl border border-gm-line text-xs"
                   />
                 </div>
 

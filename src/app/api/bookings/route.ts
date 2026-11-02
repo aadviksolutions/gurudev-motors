@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getSessionUser, hasPermission } from '@/lib/auth';
+import { getSessionUser, hasPermission, getRoleScope } from '@/lib/auth';
 import { logAudit } from '@/lib/audit';
 
 export const dynamic = 'force-dynamic';
@@ -13,11 +13,50 @@ export async function GET(req: NextRequest) {
     const canView = await hasPermission('bookings', 'view', user);
     if (!canView) return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
 
+    const scope = getRoleScope(user);
+    const { searchParams } = new URL(req.url);
+    const status = searchParams.get('status');
+    const salespersonId = searchParams.get('salespersonId');
+    const search = searchParams.get('search');
+    const fromDate = searchParams.get('fromDate');
+    const toDate = searchParams.get('toDate');
+
+    const where: any = {};
+    if (status && status !== 'ALL') where.status = status;
+
+    // Role scoping: Sales Executive only sees bookings where they are the salesperson
+    if (scope.isSalesExecutive) {
+      where.salespersonId = user.id;
+    } else if (salespersonId && salespersonId !== 'ALL') {
+      where.salespersonId = salespersonId;
+    }
+
+    if (fromDate || toDate) {
+      where.createdAt = {};
+      if (fromDate) where.createdAt.gte = new Date(fromDate);
+      if (toDate) {
+        const end = new Date(toDate);
+        end.setHours(23, 59, 59, 999);
+        where.createdAt.lte = end;
+      }
+    }
+
+    if (search) {
+      where.OR = [
+        { bookingNumber: { contains: search, mode: 'insensitive' } },
+        { customer: { name: { contains: search, mode: 'insensitive' } } },
+        { customer: { mobile: { contains: search } } },
+        { vehicle: { model: { contains: search, mode: 'insensitive' } } },
+        { vehicle: { brand: { contains: search, mode: 'insensitive' } } },
+      ];
+    }
+
     const bookings = await prisma.booking.findMany({
+      where,
       include: {
         customer: true,
         vehicle: true,
-        salesperson: { select: { id: true, name: true } },
+        salesperson: { select: { id: true, name: true, phone: true } },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -36,8 +75,9 @@ export async function POST(req: NextRequest) {
     const canCreate = await hasPermission('bookings', 'create', user);
     if (!canCreate) return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
 
+    const scope = getRoleScope(user);
     const body = await req.json();
-    const { customerId, vehicleId, bookingAmount, paymentMode, notes } = body;
+    const { customerId, vehicleId, bookingAmount, paymentMode, notes, salespersonId } = body;
 
     if (!customerId || !vehicleId || !bookingAmount) {
       return NextResponse.json({ error: 'Customer, vehicle, and booking amount are required' }, { status: 400 });
@@ -45,6 +85,12 @@ export async function POST(req: NextRequest) {
 
     const count = await prisma.booking.count();
     const bookingNumber = `BK-${new Date().getFullYear()}-${String(count + 101).padStart(3, '0')}`;
+
+    // Sales Executive is auto-assigned; Manager/Admin can choose salesperson
+    let assignedSalesperson = user.id;
+    if ((scope.isGlobalAdmin || scope.isSalesManager) && salespersonId) {
+      assignedSalesperson = salespersonId;
+    }
 
     const booking = await prisma.booking.create({
       data: {
@@ -55,11 +101,12 @@ export async function POST(req: NextRequest) {
         paymentMode: paymentMode || 'UPI',
         status: 'CONFIRMED',
         notes: notes || null,
-        salespersonId: user.id,
+        salespersonId: assignedSalesperson,
       },
       include: {
         customer: true,
         vehicle: true,
+        salesperson: { select: { id: true, name: true, phone: true } },
       },
     });
 
@@ -91,16 +138,41 @@ export async function PUT(req: NextRequest) {
     const canEdit = await hasPermission('bookings', 'edit', user);
     if (!canEdit) return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
 
+    const scope = getRoleScope(user);
     const body = await req.json();
-    const { id, status, notes } = body;
+    const { id, status, notes, salespersonId } = body;
 
     if (!id) return NextResponse.json({ error: 'ID is required' }, { status: 400 });
 
+    const existing = await prisma.booking.findUnique({ where: { id } });
+    if (!existing) return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
+
+    if (scope.isSalesExecutive && existing.salespersonId !== user.id) {
+      return NextResponse.json({ error: 'Permission denied: Booking not assigned to you' }, { status: 403 });
+    }
+
+    const updateData: any = {};
+    if (status) updateData.status = status;
+    if (notes !== undefined) updateData.notes = notes;
+    if (salespersonId && (scope.isGlobalAdmin || scope.isSalesManager)) {
+      updateData.salespersonId = salespersonId;
+    }
+
+    // If cancelled, restore vehicle to IN_STOCK
+    if (status === 'CANCELLED' && existing.status !== 'CANCELLED') {
+      await prisma.vehicle.update({
+        where: { id: existing.vehicleId },
+        data: { stockStatus: 'IN_STOCK' },
+      });
+    }
+
     const updated = await prisma.booking.update({
       where: { id },
-      data: {
-        ...(status ? { status } : {}),
-        ...(notes !== undefined ? { notes } : {}),
+      data: updateData,
+      include: {
+        customer: true,
+        vehicle: true,
+        salesperson: { select: { id: true, name: true, phone: true } },
       },
     });
 
@@ -108,8 +180,9 @@ export async function PUT(req: NextRequest) {
       user,
       action: 'UPDATE',
       module: 'BOOKINGS',
-      recordId: id,
-      newValue: `Updated status to ${status}`,
+      recordId: existing.bookingNumber || id,
+      oldValue: `Status: ${existing.status}`,
+      newValue: `Status: ${updated.status}`,
     });
 
     return NextResponse.json({ success: true, booking: updated });
