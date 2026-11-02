@@ -12,14 +12,13 @@
   gap: 28px;
 }
 .showroom-founder-portrait {
-  display: grid;
-  place-items: center;
+  position: relative;
+  display: block;
   width: 100%;
   aspect-ratio: 3 / 4;
-  border: 1px dashed #b8c5cf;
-  border-radius: 4px;
-  color: #526371;
-  font-size: 12px;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
 }
 .showroom-founder-message {
   min-width: 0;

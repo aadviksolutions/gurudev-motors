@@ -167,7 +167,7 @@ export default function RoadHero({ vehicles }: { vehicles?: ShowroomVehicle[] } 
             <span className="road-brand">{vehicle?.brand || 'Five brands. One showroom.'}</span>
             <h2><Link href={brandHref}>{vehicle?.model || 'Find your next ride'} <ArrowUpRight size={16} aria-hidden="true" /></Link></h2>
           </div>
-          <div className="road-price"><span>Sample price</span><strong>{vehicle ? formatCurrency(vehicle.price) : 'Ask for price'}</strong></div>
+          <div className="road-price"><span>Starting price</span><strong>{vehicle ? formatCurrency(vehicle.price) : 'Ask for price'}</strong></div>
         </div>
         <Link className="road-stage" href={brandHref} aria-label={vehicle ? `See all ${vehicle.brand} vehicles` : 'See all vehicles'}
           onPointerEnter={(event) => { if (event.pointerType === 'mouse') setHovered(true); }}
@@ -196,7 +196,7 @@ export default function RoadHero({ vehicles }: { vehicles?: ShowroomVehicle[] } 
           {slides.map((item, itemIndex) => <button key={item.id} type="button" aria-pressed={item.id === vehicle?.id} onClick={() => select(itemIndex)}>{item.brand}</button>)}
         </div>
         <div className="road-playback">
-          <span className="road-sample-note">Sample model. Ask us for stock and price.</span>
+          <span className="road-sample-note">Multi-brand two-wheeler showroom in Raipur. Check on-road price & EMI.</span>
           {slides.length > 1 && <div className="road-arrows">
             <button type="button" title="Previous vehicle" aria-label="Previous vehicle" onClick={() => select(index - 1)}><ArrowLeft size={18} /></button>
             {!reducedMotion && <button type="button" data-road-playback title={paused ? 'Play vehicle rotation' : 'Pause vehicle rotation'} aria-label={paused ? 'Play vehicle rotation' : 'Pause vehicle rotation'} onClick={() => dispatch({ type: paused ? 'play' : 'pause' })}>{paused ? <Play size={16} /> : <Pause size={16} />}</button>}

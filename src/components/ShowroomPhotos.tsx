@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowLeft, ArrowRight, ArrowUpRight, Instagram, MapPin, Quote, UsersRound } from 'lucide-react';
 import Dialog from './Dialog';
@@ -64,23 +65,29 @@ export default function ShowroomPhotos() {
           <div
             className="showroom-founder-portrait"
             role="img"
-            aria-label="Blank space reserved for the founder's cutout portrait"
+            aria-label="Gurudev Motors Director and Showroom"
           >
-            <span>Founder photo</span>
+            <Image
+              src="/images/desk.jpeg"
+              alt="Gurudev Motors Showroom Office Desk"
+              fill
+              sizes="(max-width: 768px) 100vw, 240px"
+              className="object-cover rounded-xl"
+            />
           </div>
           <div className="showroom-founder-message">
             <div className="showroom-founder-label">
               <Quote size={26} aria-hidden="true" />
-              <span>Sample name and message</span>
+              <span>DIRECTOR&apos;S MESSAGE</span>
             </div>
             <blockquote>
               <p>
                 We want choosing a vehicle to feel simple. Tell us what you need, and we will help
-                you compare your options, understand the price and find what suits you.
+                you compare your options, understand the price and find what suits you best.
               </p>
               <footer>
-                <strong>Rajesh Sharma</strong>
-                <span>Founder (example name)</span>
+                <strong>Vinod Pandey</strong>
+                <span>Founder &amp; Director, Gurudev Motors</span>
               </footer>
             </blockquote>
           </div>

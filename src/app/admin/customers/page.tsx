@@ -183,7 +183,7 @@ export default function AdminCustomersPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'gurudev_motors_sample_customers.csv';
+    link.download = 'gurudev_motors_customers_template.csv';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -817,7 +817,7 @@ export default function AdminCustomersPage() {
                       className="text-xs font-bold text-gm-red hover:underline flex items-center gap-1"
                     >
                       <Download className="w-3.5 h-3.5" />
-                      <span>Download Sample CSV</span>
+                      <span>Download CSV Template</span>
                     </button>
                   </div>
 

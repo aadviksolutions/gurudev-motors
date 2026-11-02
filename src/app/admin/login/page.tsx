@@ -8,19 +8,10 @@ import { Lock, Mail, ArrowRight, ShieldCheck, AlertCircle, Sparkles } from 'luci
 
 export default function AdminLoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState('admin@gurudevmotors.com');
-  const [password, setPassword] = useState('Admin@123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
-  const demoAccounts = [
-    { label: 'Main Admin', email: 'admin@gurudevmotors.com', pass: 'Admin@123', role: 'Full Control' },
-    { label: 'Sales Manager', email: 'sales.manager@gurudevmotors.com', pass: 'Sales@123', role: 'Sales & CRM' },
-    { label: 'Sales Executive', email: 'rahul.sales@gurudevmotors.com', pass: 'Sales@123', role: 'Assigned Leads' },
-    { label: 'Accounts User', email: 'accounts@gurudevmotors.com', pass: 'Accounts@123', role: 'Billing & GST' },
-    { label: 'Service Manager', email: 'service.manager@gurudevmotors.com', pass: 'Service@123', role: 'Workshop & Jobs' },
-    { label: 'Service Advisor', email: 'manoj.service@gurudevmotors.com', pass: 'Service@123', role: 'Job Cards & Floor' },
-  ];
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,12 +37,6 @@ export default function AdminLoginPage() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const setDemo = (e: string, p: string) => {
-    setEmail(e);
-    setPassword(p);
-    setError('');
   };
 
   return (
@@ -147,30 +132,7 @@ export default function AdminLoginPage() {
             </button>
           </form>
 
-          {/* Quick Demo Switcher */}
-          <div className="mt-8 pt-6 border-t border-gm-line">
-            <span className="text-[10px] font-black uppercase tracking-wider text-gm-muted block mb-3 text-center">
-              Quick Demo Staff Accounts (Click to test RBAC)
-            </span>
-            <div className="grid grid-cols-2 gap-2">
-              {demoAccounts.map((acc) => (
-                <button
-                  key={acc.label}
-                  type="button"
-                  onClick={() => setDemo(acc.email, acc.pass)}
-                  className={`p-2.5 rounded-xl border text-left text-xs transition-all ${
-                    email === acc.email
-                      ? 'border-gm-red bg-red-50/50 text-gm-red font-bold'
-                      : 'border-gm-line hover:border-gm-navy text-gm-navy hover:bg-gm-soft'
-                  }`}
-                >
-                  <b className="block text-[11px] leading-tight">{acc.label}</b>
-                  <span className="text-[10px] text-gm-muted block">{acc.role}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
+          
           <div className="mt-6 text-center">
             <Link href="/" className="text-xs text-gm-muted hover:text-gm-navy font-bold">
               ← Return to Gurudev Motors Public Website

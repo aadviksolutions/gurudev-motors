@@ -94,7 +94,7 @@ export default function RotatingHero({ vehicles }: { vehicles?: ShowroomVehicle[
           <div className="hero-vehicle-info" aria-live={paused || reducedMotion ? 'polite' : 'off'}>
             <span className="hero-brand-name">{vehicle?.brand || 'Five brands. One showroom.'}</span>
             <h2><Link href={brandHref} title={vehicle ? `See all ${vehicle.brand} vehicles` : 'See all vehicles'}>{vehicle?.model || 'Find your next ride'} <ArrowUpRight size={16} aria-hidden="true" /></Link></h2>
-            <div className="hero-vehicle-price"><span>Sample price</span><strong>{vehicle ? formatCurrency(vehicle.price) : 'Ask for price'}</strong></div>
+            <div className="hero-vehicle-price"><span>Starting price</span><strong>{vehicle ? formatCurrency(vehicle.price) : 'Ask for price'}</strong></div>
           </div>
           <Link
             className="hero-vehicle-stage"
@@ -138,7 +138,7 @@ export default function RotatingHero({ vehicles }: { vehicles?: ShowroomVehicle[
             <div><dt>Gears</dt><dd>{vehicle?.transmission || '-'}</dd></div>
           </dl>
           <div className="hero-playback">
-            <span className="hero-sample-note">Sample model. Ask us for stock and price.</span>
+            <span className="hero-sample-note">Multi-brand two-wheeler showroom in Raipur. Check on-road price & EMI.</span>
             {slides.length > 1 && <div className="hero-arrow-controls">
               <button type="button" title="Previous vehicle" aria-label="Previous vehicle" onClick={() => select(index - 1)}><ArrowLeft size={18} /></button>
               {!reducedMotion && <button type="button" data-playback title={paused ? 'Play vehicle rotation' : 'Pause vehicle rotation'} aria-label={paused ? 'Play vehicle rotation' : 'Pause vehicle rotation'} onClick={togglePlayback}>{paused ? <Play size={16} /> : <Pause size={16} />}</button>}
