@@ -249,7 +249,7 @@ export default function AdminDashboardPage() {
         )}
 
         {/* Clean Dashboard Department Tabs */}
-        <div className="flex items-center gap-1.5 border-b border-gm-line pb-2 overflow-x-auto text-xs">
+        <div className="flex items-center gap-1.5 border-b border-gm-line pb-2 overflow-x-auto text-xs no-scrollbar">
           {[
             { id: 'ALL', label: 'All Operations' },
             { id: 'SALES', label: 'CRM & Sales Pipeline' },
@@ -259,7 +259,7 @@ export default function AdminDashboardPage() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`px-3.5 py-1.5 rounded-xl font-bold transition-all shrink-0 ${
+              className={`px-3.5 py-1.5 rounded-xl font-bold transition-all shrink-0 min-w-max whitespace-nowrap cursor-pointer ${
                 activeTab === tab.id
                   ? 'bg-gm-navy text-white shadow-xs'
                   : 'bg-white text-gm-muted hover:text-gm-navy border border-gm-line'

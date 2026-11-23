@@ -411,14 +411,14 @@ export default function AdminVehiclesPage() {
                 />
               </div>
 
-              <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto">
+              <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto no-scrollbar">
                 {['ALL', 'NEW', 'PRE_OWNED', 'ELECTRIC'].map((cat) => (
                   <button
                     key={cat}
                     onClick={() => setCategoryFilter(cat)}
-                    className={`px-3 py-1.5 rounded-xl text-[11px] font-bold whitespace-nowrap transition-colors ${
+                    className={`px-3 py-1.5 rounded-xl text-[11px] font-bold whitespace-nowrap shrink-0 min-w-max transition-colors cursor-pointer ${
                       categoryFilter === cat
-                        ? 'bg-gm-navy text-white'
+                        ? 'bg-gm-navy text-white shadow-xs'
                         : 'bg-gm-soft text-gm-navy hover:bg-gm-line/50 border border-gm-line'
                     }`}
                   >

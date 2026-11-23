@@ -41,171 +41,181 @@ export default function JobCardPrintLayout({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex flex-col items-center justify-start overflow-y-auto p-2 sm:p-6 print:p-0 print:bg-white print:static print:inset-auto">
+    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex flex-col items-center justify-start overflow-y-auto overflow-x-hidden p-2 sm:p-6 print:p-0 print:bg-white print:static print:inset-auto print:overflow-visible">
       {/* Control Bar - Hidden when printing */}
-      <div className="w-full max-w-[210mm] bg-white rounded-2xl p-4 mb-4 shadow-xl border border-gm-line flex flex-wrap items-center justify-between gap-3 print:hidden">
+      <div className="w-full max-w-[210mm] bg-white rounded-2xl p-3 sm:p-4 mb-3 shadow-xl border border-gm-line flex flex-wrap items-center justify-between gap-3 print:hidden shrink-0">
         <div className="flex items-center gap-2">
           <button
             onClick={onClose}
             className="p-2 rounded-xl text-gm-navy hover:bg-gm-soft border border-gm-line transition-colors flex items-center gap-1.5 text-xs font-bold"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>Back</span>
+            <span className="hidden sm:inline">Back</span>
           </button>
           <div>
-            <b className="text-sm font-black text-gm-navy block">Job Card #{jobCard.jobCardNumber}</b>
-            <span className="text-xs text-gm-muted">A4 Official Gurudev Motors Print & Detachable Gate Pass</span>
+            <b className="text-sm font-black text-gm-navy block leading-tight">Job Card #{jobCard.jobCardNumber}</b>
+            <span className="text-[11px] text-gm-muted">A4 Official Gurudev Motors Print & Detachable Gate Pass</span>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
           <button
             onClick={onShareWhatsApp}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
           >
-            <MessageSquare className="w-4 h-4" />
-            <span>Share on WhatsApp</span>
+            <MessageSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            <span>Share WhatsApp</span>
           </button>
           <button
             onClick={handlePrint}
-            className="bg-gm-navy hover:bg-gm-navy/90 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
+            className="bg-gm-navy hover:bg-gm-navy/90 text-white text-xs font-bold px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
           >
-            <Printer className="w-4 h-4" />
-            <span>Print / Save A4 PDF</span>
+            <Printer className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            <span>Print / Save PDF</span>
           </button>
           <button
             onClick={onClose}
-            className="p-2 rounded-xl text-gm-muted hover:text-gm-navy hover:bg-gm-soft transition-colors"
+            className="p-1.5 sm:p-2 rounded-xl text-gm-muted hover:text-gm-navy hover:bg-gm-soft transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
       </div>
 
-      {/* A4 Sheet Container */}
-      <div className="relative w-full max-w-[210mm] min-h-[297mm] bg-white p-6 sm:p-8 shadow-2xl border border-slate-300 text-slate-900 print:shadow-none print:border-none print:p-0 print:m-0 print:w-full print:max-w-none text-[11px] leading-tight select-text">
-        {/* Centered Subtle Watermark */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 overflow-hidden">
-          <div className="opacity-[0.05] select-none flex flex-col items-center justify-center transform -rotate-12 scale-125">
-            <img
-              src="/images/logo.jpeg"
-              alt="Watermark"
-              className="w-[420px] max-w-full h-auto object-contain grayscale"
-            />
-            <span className="text-3xl font-black text-slate-900 tracking-widest uppercase mt-4">
-              GURUDEV MOTORS
-            </span>
-          </div>
-        </div>
+      {/* Mobile Swipe Hint */}
+      <div className="sm:hidden w-full max-w-[210mm] mb-2 px-3 py-1.5 bg-slate-900/90 text-white rounded-xl text-[11px] font-medium text-center flex items-center justify-center gap-2 shadow-xs print:hidden shrink-0">
+        <span>↔️ Scroll horizontally to view complete physical slip</span>
+      </div>
 
-        {/* Outer Border wrapping the Job Card */}
-        <div className="relative z-10 border-2 border-black flex flex-col">
-          {/* HEADER */}
-          <div className="border-b-2 border-black p-3 text-center relative bg-white">
-            <h1 className="text-xl font-black text-black tracking-wide uppercase">
-              GURUDEV MOTORS
-            </h1>
-            <p className="text-[10px] font-bold text-slate-800 uppercase mt-0.5">
-              NEW RAIPURA HOSPITAL KE SAMNE, GANESH MANDIR KE SAMNE GALI, RAIPURA, RAIPUR (C.G.) Mo. 7000619808
-            </p>
-
-            {/* Out date/time top right */}
-            <div className="absolute right-3 top-2 text-right border border-black px-2 py-1 text-[9px] font-semibold bg-white">
-              <span>out date/time: </span>
-              <b className="underline font-mono">
-                {jobCard.deliveryDate ? formatDate(jobCard.deliveryDate) : '____/____/____'} {jobCard.expectedDeliveryTime || ''}
-              </b>
-            </div>
-
-            {/* Red Stamped Job Card Number */}
-            <div className="absolute left-3 top-2">
-              <span className="text-[9px] font-black uppercase text-slate-600 block">JOB CARD NO.</span>
-              <span className="text-lg font-black text-red-600 font-mono tracking-widest border border-red-600 px-2 py-0.5 rounded bg-red-50/50 inline-block shadow-2xs">
-                {jobCard.jobCardNumber}
+      {/* Scrollable Sheet Wrapper on Small Screens */}
+      <div className="w-full max-w-full overflow-x-auto pb-10 flex justify-start sm:justify-center print:overflow-visible print:p-0 print:m-0 print:w-full print:block no-scrollbar">
+        {/* A4 Sheet Container */}
+        <div className="relative w-[780px] min-w-[780px] max-w-[210mm] min-h-[297mm] bg-white p-6 sm:p-8 shadow-2xl border border-slate-300 text-slate-900 print:shadow-none print:border-none print:p-0 print:m-0 print:w-full print:min-w-0 print:max-w-none text-[11px] leading-tight select-text shrink-0">
+          {/* Centered Subtle Watermark */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 overflow-hidden">
+            <div className="opacity-[0.05] select-none flex flex-col items-center justify-center transform -rotate-12 scale-125">
+              <img
+                src="/images/logo.jpeg"
+                alt="Watermark"
+                className="w-[420px] max-w-full h-auto object-contain grayscale"
+              />
+              <span className="text-3xl font-black text-slate-900 tracking-widest uppercase mt-4">
+                GURUDEV MOTORS
               </span>
             </div>
           </div>
 
-          {/* TWO COLUMN DETAILS GRID */}
-          <div className="grid grid-cols-2 border-b-2 border-black">
-            {/* LEFT: CUSTOMER DETAILS */}
-            <div className="border-r-2 border-black">
-              <div className="bg-slate-100 border-b border-black py-1 px-2 font-black text-center text-[10px] tracking-wider uppercase">
-                CUSTOMER DETAILS
+          {/* Outer Border wrapping the Job Card */}
+          <div className="relative z-10 border-2 border-black flex flex-col">
+            {/* HEADER */}
+            <div className="border-b-2 border-black p-3 text-center relative bg-white min-h-[72px] flex items-center justify-between">
+              {/* Red Stamped Job Card Number */}
+              <div className="text-left shrink-0 z-10 w-28">
+                <span className="text-[9px] font-black uppercase text-slate-600 block leading-tight">JOB CARD NO.</span>
+                <span className="text-lg font-black text-red-600 font-mono tracking-widest border border-red-600 px-2 py-0.5 rounded bg-red-50/50 inline-block shadow-2xs">
+                  {jobCard.jobCardNumber}
+                </span>
               </div>
-              <div className="divide-y divide-black">
-                <div className="grid grid-cols-4 p-1.5">
-                  <span className="font-bold text-slate-700">Name</span>
-                  <span className="col-span-3 font-black text-slate-900 uppercase">{jobCard.customer?.name}</span>
-                </div>
-                <div className="grid grid-cols-4 p-1.5 min-h-[42px]">
-                  <span className="font-bold text-slate-700">Address</span>
-                  <span className="col-span-3 font-medium text-slate-900">{jobCard.customer?.address || 'Raipura, Raipur (C.G.)'}</span>
-                </div>
-                <div className="grid grid-cols-4 p-1.5">
-                  <span className="font-bold text-slate-700">Phone No.</span>
-                  <span className="col-span-3 font-mono font-black text-slate-900">{jobCard.customer?.mobile}</span>
-                </div>
-                <div className="grid grid-cols-4 p-1.5">
-                  <span className="font-bold text-slate-700">e-mail</span>
-                  <span className="col-span-3 font-medium text-slate-900">{jobCard.customer?.email || '-'}</span>
-                </div>
+
+              {/* Central Dealership Title */}
+              <div className="flex-1 px-4 text-center">
+                <h1 className="text-xl font-black text-black tracking-wide uppercase">
+                  GURUDEV MOTORS
+                </h1>
+                <p className="text-[10px] font-bold text-slate-800 uppercase mt-0.5">
+                  NEW RAIPURA HOSPITAL KE SAMNE, GANESH MANDIR KE SAMNE GALI, RAIPURA, RAIPUR (C.G.) Mo. 7000619808
+                </p>
+              </div>
+
+              {/* Out date/time top right */}
+              <div className="text-right border border-black px-2 py-1 text-[9px] font-semibold bg-white shrink-0 z-10">
+                <span>out date/time: </span>
+                <b className="underline font-mono">
+                  {jobCard.deliveryDate ? formatDate(jobCard.deliveryDate) : '____/____/____'} {jobCard.expectedDeliveryTime || ''}
+                </b>
               </div>
             </div>
 
-            {/* RIGHT: VEHICLE DETAILS */}
-            <div>
-              <div className="bg-slate-100 border-b border-black py-1 px-2 font-black text-center text-[10px] tracking-wider uppercase">
-                VEHICLE DETAILS
+            {/* TWO COLUMN DETAILS GRID */}
+            <div className="grid grid-cols-2 border-b-2 border-black">
+              {/* LEFT: CUSTOMER DETAILS */}
+              <div className="border-r-2 border-black">
+                <div className="bg-slate-100 border-b border-black py-1 px-2 font-black text-center text-[10px] tracking-wider uppercase">
+                  CUSTOMER DETAILS
+                </div>
+                <div className="divide-y divide-black">
+                  <div className="grid grid-cols-4 p-1.5">
+                    <span className="font-bold text-slate-700">Name</span>
+                    <span className="col-span-3 font-black text-slate-900 uppercase">{jobCard.customer?.name}</span>
+                  </div>
+                  <div className="grid grid-cols-4 p-1.5 min-h-[42px]">
+                    <span className="font-bold text-slate-700">Address</span>
+                    <span className="col-span-3 font-medium text-slate-900 break-words">{jobCard.customer?.address || 'Raipura, Raipur (C.G.)'}</span>
+                  </div>
+                  <div className="grid grid-cols-4 p-1.5">
+                    <span className="font-bold text-slate-700">Phone No.</span>
+                    <span className="col-span-3 font-mono font-black text-slate-900">{jobCard.customer?.mobile}</span>
+                  </div>
+                  <div className="grid grid-cols-4 p-1.5">
+                    <span className="font-bold text-slate-700">e-mail</span>
+                    <span className="col-span-3 font-medium text-slate-900">{jobCard.customer?.email || '-'}</span>
+                  </div>
+                </div>
               </div>
-              <div className="divide-y divide-black text-[10px]">
-                <div className="grid grid-cols-12 p-1">
-                  <span className="col-span-4 font-bold text-slate-700">MODEL</span>
-                  <span className="col-span-8 font-black uppercase">{jobCard.vehicleModel}</span>
+
+              {/* RIGHT: VEHICLE DETAILS */}
+              <div>
+                <div className="bg-slate-100 border-b border-black py-1 px-2 font-black text-center text-[10px] tracking-wider uppercase">
+                  VEHICLE DETAILS
                 </div>
-                <div className="grid grid-cols-12 p-1">
-                  <span className="col-span-4 font-bold text-slate-700">TYPE KICK/SELF</span>
-                  <span className="col-span-8 font-bold">{jobCard.vehicleTypeKickSelf || 'Self'}</span>
-                </div>
-                <div className="grid grid-cols-12 p-1">
-                  <span className="col-span-4 font-bold text-slate-700">FRAME NO.</span>
-                  <span className="col-span-8 font-mono font-bold uppercase">{jobCard.frameNumber || '-'}</span>
-                </div>
-                <div className="grid grid-cols-12 p-1">
-                  <span className="col-span-4 font-bold text-slate-700">ENGINE NO.</span>
-                  <span className="col-span-8 font-mono font-bold uppercase">{jobCard.engineNumber || '-'}</span>
-                </div>
-                <div className="grid grid-cols-12 p-1">
-                  <span className="col-span-4 font-bold text-slate-700">COLOUR</span>
-                  <span className="col-span-8 font-bold">{jobCard.colour || '-'}</span>
-                </div>
-                <div className="grid grid-cols-12 p-1">
-                  <span className="col-span-4 font-bold text-slate-700">REGISTRATION NO.</span>
-                  <span className="col-span-8 font-mono font-black text-red-700 uppercase">{jobCard.vehicleRegNumber}</span>
-                </div>
-                <div className="grid grid-cols-12 p-1">
-                  <span className="col-span-4 font-bold text-slate-700">DATE OF SALE</span>
-                  <span className="col-span-8">{jobCard.dateOfSale ? formatDate(jobCard.dateOfSale) : '-'}</span>
-                </div>
-                <div className="grid grid-cols-12 p-1">
-                  <span className="col-span-4 font-bold text-slate-700">KMs. RUN</span>
-                  <span className="col-span-8 font-mono font-black">{jobCard.kmReading} km</span>
-                </div>
-                <div className="grid grid-cols-12 p-1">
-                  <span className="col-span-4 font-bold text-slate-700">KEY NO.</span>
-                  <span className="col-span-8 font-mono">{jobCard.keyNumber || '-'}</span>
-                </div>
-                <div className="grid grid-cols-12 p-1">
-                  <span className="col-span-4 font-bold text-slate-700">FREE SERVICE COUPON NO.</span>
-                  <span className="col-span-8 font-mono">{jobCard.freeCouponNumber || '-'}</span>
-                </div>
-                <div className="grid grid-cols-12 p-1">
-                  <span className="col-span-4 font-bold text-slate-700">SELLING DEALER</span>
-                  <span className="col-span-8 font-bold">{jobCard.sellingDealer || 'Gurudev Motors'}</span>
+                <div className="divide-y divide-black text-[10px]">
+                  <div className="grid grid-cols-12 p-1">
+                    <span className="col-span-5 font-bold text-slate-700">MODEL</span>
+                    <span className="col-span-7 font-black uppercase">{jobCard.vehicleModel}</span>
+                  </div>
+                  <div className="grid grid-cols-12 p-1">
+                    <span className="col-span-5 font-bold text-slate-700">TYPE KICK/SELF</span>
+                    <span className="col-span-7 font-bold">{jobCard.vehicleTypeKickSelf || 'Self'}</span>
+                  </div>
+                  <div className="grid grid-cols-12 p-1">
+                    <span className="col-span-5 font-bold text-slate-700">FRAME NO.</span>
+                    <span className="col-span-7 font-mono font-bold uppercase">{jobCard.frameNumber || '-'}</span>
+                  </div>
+                  <div className="grid grid-cols-12 p-1">
+                    <span className="col-span-5 font-bold text-slate-700">ENGINE NO.</span>
+                    <span className="col-span-7 font-mono font-bold uppercase">{jobCard.engineNumber || '-'}</span>
+                  </div>
+                  <div className="grid grid-cols-12 p-1">
+                    <span className="col-span-5 font-bold text-slate-700">COLOUR</span>
+                    <span className="col-span-7 font-bold">{jobCard.colour || '-'}</span>
+                  </div>
+                  <div className="grid grid-cols-12 p-1">
+                    <span className="col-span-5 font-bold text-slate-700">REGISTRATION NO.</span>
+                    <span className="col-span-7 font-mono font-black text-red-700 uppercase">{jobCard.vehicleRegNumber}</span>
+                  </div>
+                  <div className="grid grid-cols-12 p-1">
+                    <span className="col-span-5 font-bold text-slate-700">DATE OF SALE</span>
+                    <span className="col-span-7">{jobCard.dateOfSale ? formatDate(jobCard.dateOfSale) : '-'}</span>
+                  </div>
+                  <div className="grid grid-cols-12 p-1">
+                    <span className="col-span-5 font-bold text-slate-700">KMs. RUN</span>
+                    <span className="col-span-7 font-mono font-black">{jobCard.kmReading} km</span>
+                  </div>
+                  <div className="grid grid-cols-12 p-1">
+                    <span className="col-span-5 font-bold text-slate-700">KEY NO.</span>
+                    <span className="col-span-7 font-mono">{jobCard.keyNumber || '-'}</span>
+                  </div>
+                  <div className="grid grid-cols-12 p-1">
+                    <span className="col-span-5 font-bold text-slate-700">FREE SERVICE COUPON NO.</span>
+                    <span className="col-span-7 font-mono">{jobCard.freeCouponNumber || '-'}</span>
+                  </div>
+                  <div className="grid grid-cols-12 p-1">
+                    <span className="col-span-5 font-bold text-slate-700">SELLING DEALER</span>
+                    <span className="col-span-7 font-bold">{jobCard.sellingDealer || 'Gurudev Motors'}</span>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
           {/* TYPE OF SERVICE & PHYSICAL/PAINT CONDITION */}
           <div className="border-b-2 border-black grid grid-cols-12 bg-white">
@@ -460,6 +470,7 @@ export default function JobCardPrintLayout({
                 </div>
               </div>
             </div>
+          </div>
           </div>
         </div>
       </div>

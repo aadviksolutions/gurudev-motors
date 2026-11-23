@@ -778,10 +778,10 @@ New Raipura, Raipur (C.G.)`;
         )}
 
         {/* Tab Switcher */}
-        <div className="flex gap-2 border-b border-gm-line pb-3">
+        <div className="flex items-center gap-2 border-b border-gm-line pb-3 overflow-x-auto no-scrollbar">
           <button
             onClick={() => setActiveTab('JOBS')}
-            className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
+            className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 whitespace-nowrap shrink-0 min-w-max cursor-pointer ${
               activeTab === 'JOBS'
                 ? 'bg-gm-navy text-white shadow-xs'
                 : 'text-gm-muted hover:text-gm-navy hover:bg-gm-soft'
@@ -793,19 +793,19 @@ New Raipura, Raipur (C.G.)`;
 
           <button
             onClick={() => setActiveTab('CREATE')}
-            className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
+            className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 whitespace-nowrap shrink-0 min-w-max cursor-pointer ${
               activeTab === 'CREATE'
                 ? 'bg-gm-navy text-white shadow-xs'
                 : 'text-gm-muted hover:text-gm-navy hover:bg-gm-soft'
             }`}
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>+ Issue New Job Card (Physical Form)</span>
+            <span>+ Issue New Job Card</span>
           </button>
 
           <button
             onClick={() => setActiveTab('REMINDERS')}
-            className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
+            className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 whitespace-nowrap shrink-0 min-w-max cursor-pointer ${
               activeTab === 'REMINDERS'
                 ? 'bg-gm-navy text-white shadow-xs'
                 : 'text-gm-muted hover:text-gm-navy hover:bg-gm-soft'
@@ -826,7 +826,7 @@ New Raipura, Raipur (C.G.)`;
 
           <button
             onClick={() => setActiveTab('APPOINTMENTS')}
-            className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
+            className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 whitespace-nowrap shrink-0 min-w-max cursor-pointer ${
               activeTab === 'APPOINTMENTS'
                 ? 'bg-gm-navy text-white shadow-xs'
                 : 'text-gm-muted hover:text-gm-navy hover:bg-gm-soft'
@@ -855,7 +855,7 @@ New Raipura, Raipur (C.G.)`;
                 />
               </div>
 
-              <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0">
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 no-scrollbar">
                 <span className="text-[11px] font-bold text-gm-muted whitespace-nowrap">Stage:</span>
                 <select
                   value={stageFilter}

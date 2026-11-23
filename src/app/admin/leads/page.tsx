@@ -331,14 +331,14 @@ export default function AdminLeadsPage() {
             />
           </form>
 
-          <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-1 md:pb-0">
+          <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-1 md:pb-0 no-scrollbar">
             {statusOptions.map((st) => (
               <button
                 key={st}
                 onClick={() => setStatusFilter(st)}
-                className={`px-2.5 py-1.5 rounded-xl text-[10px] font-bold whitespace-nowrap transition-colors cursor-pointer ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap shrink-0 min-w-max transition-colors cursor-pointer ${
                   statusFilter === st
-                    ? 'bg-gm-navy text-white'
+                    ? 'bg-gm-navy text-white shadow-xs'
                     : 'bg-gm-soft text-gm-navy hover:bg-gm-line/50 border border-gm-line'
                 }`}
               >

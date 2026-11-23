@@ -459,7 +459,7 @@ export default function AdminReportsPage() {
         </div>
 
         {/* Report Tab Navigation */}
-        <div className="flex gap-1.5 border-b border-gm-line overflow-x-auto pb-2 print:hidden">
+        <div className="flex items-center gap-2 border-b border-gm-line overflow-x-auto pb-2 no-scrollbar print:hidden">
           {[
             { id: 'overview', label: 'Executive Overview', icon: TrendingUp },
             { id: 'leads', label: 'CRM Leads & Pipeline', icon: Users },
@@ -476,13 +476,13 @@ export default function AdminReportsPage() {
                   setActiveTab(tab.id as ReportTab);
                   setStatusFilter('ALL');
                 }}
-                className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 whitespace-nowrap ${
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap shrink-0 min-w-max cursor-pointer ${
                   isActive
                     ? 'bg-gm-navy text-white shadow-xs'
-                    : 'text-gm-muted hover:text-gm-navy hover:bg-gm-soft'
+                    : 'bg-white text-gm-muted hover:text-gm-navy hover:bg-gm-soft border border-gm-line'
                 }`}
               >
-                <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-gm-muted'}`} />
+                <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-gm-muted'}`} />
                 <span>{tab.label}</span>
               </button>
             );
