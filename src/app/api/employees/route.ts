@@ -11,7 +11,21 @@ export async function GET(req: NextRequest) {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const canView = await hasPermission('employees', 'view', user);
-    if (!canView) return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
+    const scope = getRoleScope(user);
+    const isManagerOrAssigner =
+      scope.isGlobalAdmin ||
+      scope.isSalesManager ||
+      scope.isServiceManager ||
+      user.roleCode === 'SALES_MANAGER' ||
+      user.roleCode === 'SERVICE_MANAGER' ||
+      !!user.permissions?.leads?.assign ||
+      !!user.permissions?.leads?.view ||
+      !!user.permissions?.service?.assign ||
+      !!user.permissions?.service?.view;
+
+    if (!canView && !isManagerOrAssigner) {
+      return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
+    }
 
     const { searchParams } = new URL(req.url);
     const search = searchParams.get('search');

@@ -247,9 +247,9 @@ export async function PUT(req: NextRequest) {
     if (status) updateData.status = status;
     if (priority) updateData.priority = priority;
 
-    // Only Admin or Sales Manager can reassign leads
+    // Only Admin, Sales Manager or user with leads.assign permission can reassign leads
     if (assignedToId !== undefined) {
-      if (scope.isGlobalAdmin || scope.isSalesManager) {
+      if (scope.isGlobalAdmin || scope.isSalesManager || user.permissions?.leads?.assign) {
         updateData.assignedToId = assignedToId || null;
       }
     }

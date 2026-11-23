@@ -89,12 +89,12 @@ export default function AdminLeadsPage() {
     try {
       const res = await fetch('/api/employees');
       const data = await res.json();
-      if (data.success) {
-        // Filter to sales staff
+      if (data.success && Array.isArray(data.employees)) {
+        // Filter to sales staff and managers
         const salesStaff = data.employees.filter((e: any) =>
-          ['SALES_EXECUTIVE', 'SALES_MANAGER', 'MAIN_ADMIN'].includes(e.role?.code)
+          ['SALES_EXECUTIVE', 'SALES_MANAGER', 'MAIN_ADMIN', 'ADMIN', 'SUPER_ADMIN'].includes(e.role?.code)
         );
-        setEmployees(salesStaff);
+        setEmployees(salesStaff.length > 0 ? salesStaff : data.employees);
       }
     } catch (err) {
       console.error(err);
@@ -140,6 +140,15 @@ export default function AdminLeadsPage() {
       const data = await res.json();
       if (!data.success) {
         alert(data.error || 'Failed to reassign lead');
+        return;
+      }
+      const assignedUser = employees.find((e) => e.id === assignedToId) || null;
+      if (selectedLead?.id === id) {
+        setSelectedLead({
+          ...selectedLead,
+          assignedToId: assignedToId || null,
+          assignedTo: assignedUser ? { id: assignedUser.id, name: assignedUser.name, phone: assignedUser.phone } : null,
+        });
       }
       fetchLeads();
     } catch (err) {
@@ -421,12 +430,17 @@ export default function AdminLeadsPage() {
                           <select
                             value={lead.assignedToId || ''}
                             onChange={(e) => handleAssignEmployee(lead.id, e.target.value)}
-                            className="px-2 py-1 rounded-lg border border-gm-line text-xs font-medium text-gm-navy bg-white focus:outline-none"
+                            className="px-2 py-1 rounded-lg border border-gm-line text-xs font-semibold text-gm-navy bg-white focus:outline-none focus:border-gm-navy"
                           >
                             <option value="">-- Unassigned --</option>
+                            {lead.assignedTo && !employees.some((emp) => emp.id === lead.assignedTo.id) && (
+                              <option value={lead.assignedTo.id}>
+                                {lead.assignedTo.name}
+                              </option>
+                            )}
                             {employees.map((emp) => (
                               <option key={emp.id} value={emp.id}>
-                                {emp.name} ({emp.role?.name})
+                                {emp.name} ({emp.role?.name || emp.role?.code || 'Sales'})
                               </option>
                             ))}
                           </select>
@@ -523,8 +537,32 @@ export default function AdminLeadsPage() {
                 <div><b>Budget:</b> {selectedLead.budget || 'N/A'}</div>
                 <div><b>Lead Source:</b> {selectedLead.source}</div>
                 <div><b>Current Status:</b> {selectedLead.status}</div>
-                <div><b>Executive:</b> {selectedLead.assignedTo?.name || 'Unassigned'}</div>
-                <div>
+                <div className="col-span-2 pt-1 border-t border-gm-line/60">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                    <label className="font-bold text-gm-navy flex items-center gap-1">
+                      <Users className="w-3.5 h-3.5 text-gm-red" />
+                      <span>Assigned Executive / Reassign:</span>
+                    </label>
+                    <select
+                      value={selectedLead.assignedToId || ''}
+                      onChange={(e) => handleAssignEmployee(selectedLead.id, e.target.value)}
+                      className="px-2.5 py-1.5 rounded-xl border border-gm-line text-xs font-bold text-gm-navy bg-white focus:outline-none focus:border-gm-navy"
+                    >
+                      <option value="">-- Unassigned (Click to Assign) --</option>
+                      {selectedLead.assignedTo && !employees.some((emp) => emp.id === selectedLead.assignedTo.id) && (
+                        <option value={selectedLead.assignedTo.id}>
+                          {selectedLead.assignedTo.name}
+                        </option>
+                      )}
+                      {employees.map((emp) => (
+                        <option key={emp.id} value={emp.id}>
+                          {emp.name} ({emp.role?.name || emp.role?.code || 'Sales'})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="col-span-2">
                   <b>Next Follow-up Date:</b>{' '}
                   <span className="font-bold text-gm-red">
                     {selectedLead.followUpDate ? formatDate(selectedLead.followUpDate) : 'Not scheduled'}

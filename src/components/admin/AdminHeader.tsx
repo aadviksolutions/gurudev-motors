@@ -4,7 +4,19 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Menu, Bell, LogOut, ExternalLink, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import {
+  Menu,
+  Bell,
+  LogOut,
+  ExternalLink,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Download,
+  Smartphone,
+  Laptop,
+  CheckCircle2,
+  X,
+} from 'lucide-react';
 import { AuthUser } from '@/lib/auth';
 
 interface AdminHeaderProps {
@@ -27,6 +39,50 @@ export default function AdminHeader({
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotifs, setShowNotifs] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
+
+  // PWA Install State for Staff
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showInstallModal, setShowInstallModal] = useState(false);
+  const [isInstalled, setIsInstalled] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    if (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone) {
+      setIsInstalled(true);
+    }
+
+    const handleBeforeInstall = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+
+    const handleAppInstalled = () => {
+      setIsInstalled(true);
+      setDeferredPrompt(null);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const choice = await deferredPrompt.userChoice;
+      if (choice && choice.outcome === 'accepted') {
+        setIsInstalled(true);
+      }
+      setDeferredPrompt(null);
+    } else {
+      setShowInstallModal(true);
+    }
+  };
 
   // Close notification panel when clicking outside or pressing Escape
   useEffect(() => {
@@ -154,6 +210,20 @@ export default function AdminHeader({
       </div>
 
       <div className="flex items-center gap-3">
+        {/* Install / Download App for Staff */}
+        <button
+          type="button"
+          onClick={handleInstallClick}
+          className="flex items-center gap-1.5 text-xs font-bold bg-gm-red/10 text-gm-red hover:bg-gm-red hover:text-white px-2.5 sm:px-3 py-1.5 rounded-xl border border-gm-red/25 transition-all cursor-pointer shadow-xs"
+          title="Install website as an App on PC or Mobile"
+        >
+          <Download className="w-3.5 h-3.5 text-gm-red group-hover:text-white" />
+          <span className="hidden sm:inline font-black">
+            {isInstalled ? 'App Ready' : 'Download App'}
+          </span>
+          <span className="sm:hidden font-black">App</span>
+        </button>
+
         {/* Visit public site link */}
         <a
           href="/"
@@ -248,6 +318,76 @@ export default function AdminHeader({
           <LogOut className="w-5 h-5" />
         </button>
       </div>
+
+      {/* Staff PWA Install Guide Modal */}
+      {showInstallModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full border border-gm-line shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-gm-line">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-gm-red/10 flex items-center justify-center text-gm-red">
+                  <Download className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-gm-navy uppercase tracking-wider">
+                    Download Gurudev Motors App
+                  </h3>
+                  <span className="text-[10px] text-gm-muted block">Direct install on Phone or Computer</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowInstallModal(false)}
+                className="text-gm-muted hover:text-gm-navy p-1 rounded-lg cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div className="p-3 bg-slate-50 border border-gm-line rounded-2xl space-y-1.5">
+                <div className="flex items-center gap-2 text-gm-navy font-bold">
+                  <Laptop className="w-4 h-4 text-gm-red" />
+                  <span>On Computer (Chrome or Edge):</span>
+                </div>
+                <p className="text-gm-muted text-[11px] leading-relaxed">
+                  Click the <b>Install (⤓)</b> icon located in your browser address bar on the top right, or click browser menu (⋮) → <b>&quot;Install Gurudev Motors&quot;</b>.
+                </p>
+              </div>
+
+              <div className="p-3 bg-slate-50 border border-gm-line rounded-2xl space-y-1.5">
+                <div className="flex items-center gap-2 text-gm-navy font-bold">
+                  <Smartphone className="w-4 h-4 text-emerald-600" />
+                  <span>On Android Phone:</span>
+                </div>
+                <p className="text-gm-muted text-[11px] leading-relaxed">
+                  Tap Chrome menu (<b>⋮</b>) on top right → select <b>&quot;Install App&quot;</b> or <b>&quot;Add to Home screen&quot;</b>.
+                </p>
+              </div>
+
+              <div className="p-3 bg-slate-50 border border-gm-line rounded-2xl space-y-1.5">
+                <div className="flex items-center gap-2 text-gm-navy font-bold">
+                  <Smartphone className="w-4 h-4 text-blue-600" />
+                  <span>On iPhone / iPad (Safari):</span>
+                </div>
+                <p className="text-gm-muted text-[11px] leading-relaxed">
+                  Tap the <b>Share button (↑)</b> at the bottom bar → scroll down and tap <b>&quot;Add to Home Screen&quot;</b>.
+                </p>
+              </div>
+            </div>
+
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => setShowInstallModal(false)}
+                className="w-full py-2.5 bg-gm-navy hover:bg-gm-navy-dark text-white text-xs font-black rounded-xl transition-colors cursor-pointer"
+              >
+                Got It
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 }

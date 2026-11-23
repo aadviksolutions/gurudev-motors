@@ -30,12 +30,13 @@ import {
   CreditCard,
   Hash,
   Edit3,
+  BellRing,
 } from 'lucide-react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import JobCardPrintLayout from '@/components/admin/JobCardPrintLayout';
 import { formatCurrency, formatDate, getStatusColor } from '@/lib/utils';
 
-type ServiceTab = 'JOBS' | 'CREATE' | 'APPOINTMENTS';
+type ServiceTab = 'JOBS' | 'CREATE' | 'REMINDERS' | 'APPOINTMENTS';
 
 interface RepairRequestRow {
   regularRequest: string;
@@ -87,6 +88,14 @@ export default function AdminServicePage() {
 
   // Success Confirmation Notification
   const [successBanner, setSuccessBanner] = useState<string>('');
+
+  // Service Reminders State
+  const [reminders, setReminders] = useState<any[]>([]);
+  const [reminderStats, setReminderStats] = useState({ total: 0, overdue: 0, dueThisWeek: 0, dueThisMonth: 0, upcoming: 0 });
+  const [reminderInterval, setReminderInterval] = useState<3 | 6>(3);
+  const [reminderFilter, setReminderFilter] = useState<'ALL' | 'OVERDUE' | 'DUE_THIS_WEEK' | 'DUE_THIS_MONTH'>('ALL');
+  const [reminderSearch, setReminderSearch] = useState('');
+  const [remindersLoading, setRemindersLoading] = useState(false);
 
   // FORM STATE: Physical Job Card Fields
   const [customJobCardNumber, setCustomJobCardNumber] = useState('');
@@ -231,11 +240,30 @@ export default function AdminServicePage() {
     }
   };
 
+  const fetchReminders = async () => {
+    setRemindersLoading(true);
+    try {
+      const res = await fetch(
+        `/api/service-reminders?interval=${reminderInterval}&filter=${reminderFilter}&search=${encodeURIComponent(reminderSearch)}`
+      );
+      const data = await res.json();
+      if (data.success) {
+        setReminders(data.reminders || []);
+        if (data.stats) setReminderStats(data.stats);
+      }
+    } catch (err) {
+      console.error('Fetch reminders error:', err);
+    } finally {
+      setRemindersLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchJobCards();
     fetchAppointments();
     fetchEmployees();
     fetchCustomers();
+    fetchReminders();
   }, []);
 
   useEffect(() => {
@@ -245,6 +273,10 @@ export default function AdminServicePage() {
   useEffect(() => {
     fetchAppointments();
   }, [appointmentFilter, search]);
+
+  useEffect(() => {
+    fetchReminders();
+  }, [reminderInterval, reminderFilter]);
 
   // Quick lookup customer on phone / name typing
   const handleMobileChange = (mobileInput: string) => {
@@ -631,11 +663,15 @@ New Raipura, Raipur (C.G.)`;
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => (activeTab === 'APPOINTMENTS' ? fetchAppointments() : fetchJobCards())}
-              disabled={refreshing}
-              className="bg-white border border-gm-line hover:border-gm-navy text-gm-navy text-xs font-bold px-3 py-2.5 rounded-xl transition-colors flex items-center gap-1.5 shadow-xs"
+              onClick={() => {
+                if (activeTab === 'APPOINTMENTS') fetchAppointments();
+                else if (activeTab === 'REMINDERS') fetchReminders();
+                else fetchJobCards();
+              }}
+              disabled={refreshing || remindersLoading}
+              className="bg-white border border-gm-line hover:border-gm-navy text-gm-navy text-xs font-bold px-3 py-2.5 rounded-xl transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-3.5 h-3.5 ${refreshing || remindersLoading ? 'animate-spin' : ''}`} />
               <span>Refresh</span>
             </button>
 
@@ -692,6 +728,27 @@ New Raipura, Raipur (C.G.)`;
           >
             <Plus className="w-3.5 h-3.5" />
             <span>+ Issue New Job Card (Physical Form)</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('REMINDERS')}
+            className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
+              activeTab === 'REMINDERS'
+                ? 'bg-gm-navy text-white shadow-xs'
+                : 'text-gm-muted hover:text-gm-navy hover:bg-gm-soft'
+            }`}
+          >
+            <BellRing className="w-3.5 h-3.5 text-gm-red" />
+            <span>Service Due Reminders</span>
+            {reminderStats.overdue > 0 ? (
+              <span className="px-1.5 py-0.5 rounded-full text-[9px] font-black bg-rose-600 text-white">
+                {reminderStats.overdue} Overdue
+              </span>
+            ) : reminderStats.total > 0 ? (
+              <span className="px-1.5 py-0.5 rounded-full text-[9px] font-black bg-gm-soft text-gm-navy">
+                {reminderStats.total}
+              </span>
+            ) : null}
           </button>
 
           <button
@@ -941,6 +998,9 @@ New Raipura, Raipur (C.G.)`;
                       onChange={(e) => setCustomerName(e.target.value)}
                       className="w-full px-3 py-2 rounded-xl border border-gm-line text-xs font-bold bg-white"
                     />
+                    <span className="text-[10px] text-gm-muted mt-0.5 block">
+                      Multiple customers can have the same name (e.g. &quot;Ram&quot;). Distinct customers are identified by their unique mobile number.
+                    </span>
                   </div>
 
                   <div>
@@ -1476,6 +1536,278 @@ New Raipura, Raipur (C.G.)`;
               </button>
             </div>
           </form>
+        )}
+
+        {/* ========================================================================= */}
+        {/* TAB 2.5: SERVICE DUE REMINDERS                                            */}
+        {/* ========================================================================= */}
+        {activeTab === 'REMINDERS' && (
+          <div className="space-y-4">
+            {/* Control & Filter Header */}
+            <div className="bg-white rounded-2xl p-4 border border-gm-line shadow-xs flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  fetchReminders();
+                }}
+                className="relative flex-1"
+              >
+                <Search className="w-4 h-4 text-gm-muted absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Filter by customer name, mobile, vehicle model or registration..."
+                  value={reminderSearch}
+                  onChange={(e) => setReminderSearch(e.target.value)}
+                  className="w-full pl-9 pr-20 py-2 rounded-xl border border-gm-line text-xs font-medium focus:outline-none focus:border-gm-navy"
+                />
+                <button
+                  type="submit"
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 px-3 py-1 bg-gm-navy text-white text-[11px] font-bold rounded-lg hover:bg-gm-red transition-colors"
+                >
+                  Search
+                </button>
+              </form>
+
+              {/* Service Interval Selector (3-Month vs 6-Month) */}
+              <div className="flex items-center gap-1.5 bg-gm-soft p-1 rounded-xl border border-gm-line">
+                <span className="text-[10px] font-black uppercase text-gm-muted px-2">Due Interval:</span>
+                <button
+                  type="button"
+                  onClick={() => setReminderInterval(3)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                    reminderInterval === 3
+                      ? 'bg-gm-navy text-white shadow-xs'
+                      : 'text-gm-navy hover:bg-white/80'
+                  }`}
+                >
+                  3 Months
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setReminderInterval(6)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                    reminderInterval === 6
+                      ? 'bg-gm-navy text-white shadow-xs'
+                      : 'text-gm-navy hover:bg-white/80'
+                  }`}
+                >
+                  6 Months
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Stat Summary Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div
+                onClick={() => setReminderFilter('ALL')}
+                className={`p-3.5 rounded-2xl border transition-all cursor-pointer ${
+                  reminderFilter === 'ALL'
+                    ? 'bg-gm-navy text-white border-gm-navy shadow-md'
+                    : 'bg-white border-gm-line hover:border-gm-navy text-gm-navy'
+                }`}
+              >
+                <span className={`block text-[10px] font-black uppercase tracking-wider ${reminderFilter === 'ALL' ? 'text-slate-300' : 'text-gm-muted'}`}>
+                  Total Reminders
+                </span>
+                <div className="text-2xl font-black mt-0.5">{reminderStats.total}</div>
+                <span className={`text-[10px] block mt-0.5 ${reminderFilter === 'ALL' ? 'text-slate-300' : 'text-gm-muted'}`}>
+                  All eligible customer vehicles
+                </span>
+              </div>
+
+              <div
+                onClick={() => setReminderFilter('OVERDUE')}
+                className={`p-3.5 rounded-2xl border transition-all cursor-pointer ${
+                  reminderFilter === 'OVERDUE'
+                    ? 'bg-rose-700 text-white border-rose-700 shadow-md'
+                    : 'bg-white border-gm-line hover:border-rose-400 text-gm-navy'
+                }`}
+              >
+                <span className={`block text-[10px] font-black uppercase tracking-wider ${reminderFilter === 'OVERDUE' ? 'text-rose-100' : 'text-rose-600'}`}>
+                  Overdue Service
+                </span>
+                <div className="text-2xl font-black text-rose-600 mt-0.5" style={reminderFilter === 'OVERDUE' ? { color: '#ffffff' } : {}}>
+                  {reminderStats.overdue}
+                </div>
+                <span className={`text-[10px] block mt-0.5 ${reminderFilter === 'OVERDUE' ? 'text-rose-100' : 'text-gm-muted'}`}>
+                  Due date has passed
+                </span>
+              </div>
+
+              <div
+                onClick={() => setReminderFilter('DUE_THIS_WEEK')}
+                className={`p-3.5 rounded-2xl border transition-all cursor-pointer ${
+                  reminderFilter === 'DUE_THIS_WEEK'
+                    ? 'bg-amber-600 text-white border-amber-600 shadow-md'
+                    : 'bg-white border-gm-line hover:border-amber-400 text-gm-navy'
+                }`}
+              >
+                <span className={`block text-[10px] font-black uppercase tracking-wider ${reminderFilter === 'DUE_THIS_WEEK' ? 'text-amber-100' : 'text-amber-700'}`}>
+                  Due This Week
+                </span>
+                <div className="text-2xl font-black text-amber-600 mt-0.5" style={reminderFilter === 'DUE_THIS_WEEK' ? { color: '#ffffff' } : {}}>
+                  {reminderStats.dueThisWeek}
+                </div>
+                <span className={`text-[10px] block mt-0.5 ${reminderFilter === 'DUE_THIS_WEEK' ? 'text-amber-100' : 'text-gm-muted'}`}>
+                  Next 7 days window
+                </span>
+              </div>
+
+              <div
+                onClick={() => setReminderFilter('DUE_THIS_MONTH')}
+                className={`p-3.5 rounded-2xl border transition-all cursor-pointer ${
+                  reminderFilter === 'DUE_THIS_MONTH'
+                    ? 'bg-emerald-700 text-white border-emerald-700 shadow-md'
+                    : 'bg-white border-gm-line hover:border-emerald-400 text-gm-navy'
+                }`}
+              >
+                <span className={`block text-[10px] font-black uppercase tracking-wider ${reminderFilter === 'DUE_THIS_MONTH' ? 'text-emerald-100' : 'text-emerald-700'}`}>
+                  Due This Month
+                </span>
+                <div className="text-2xl font-black text-emerald-600 mt-0.5" style={reminderFilter === 'DUE_THIS_MONTH' ? { color: '#ffffff' } : {}}>
+                  {reminderStats.dueThisMonth}
+                </div>
+                <span className={`text-[10px] block mt-0.5 ${reminderFilter === 'DUE_THIS_MONTH' ? 'text-emerald-100' : 'text-gm-muted'}`}>
+                  Within 30 days
+                </span>
+              </div>
+            </div>
+
+            {/* Reminders List Table */}
+            <div className="bg-white rounded-2xl border border-gm-line shadow-xs overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="border-b border-gm-line bg-gm-soft/60 text-gm-navy uppercase tracking-wider text-[10px] font-black">
+                      <th className="p-3.5">#</th>
+                      <th className="p-3.5">Customer Details</th>
+                      <th className="p-3.5">Vehicle &amp; Reg No</th>
+                      <th className="p-3.5">Purchase / Last Service</th>
+                      <th className="p-3.5">Next Service Due</th>
+                      <th className="p-3.5">Milestone</th>
+                      <th className="p-3.5 text-right">One-Click Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gm-line">
+                    {remindersLoading ? (
+                      <tr>
+                        <td colSpan={7} className="p-8 text-center text-gm-muted font-bold">
+                          Loading service reminders...
+                        </td>
+                      </tr>
+                    ) : reminders.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="p-8 text-center text-gm-muted">
+                          No service due reminders found for current filter.
+                        </td>
+                      </tr>
+                    ) : (
+                      reminders.map((rem, idx) => {
+                        const isOverdue = rem.status === 'OVERDUE';
+                        const isThisWeek = rem.status === 'DUE_THIS_WEEK';
+
+                        return (
+                          <tr key={`${rem.customerId}-${idx}`} className="hover:bg-gm-soft/30 transition-colors">
+                            <td className="p-3.5 text-gm-muted text-[11px] font-bold">{idx + 1}</td>
+                            <td className="p-3.5">
+                              <b className="text-gm-navy block font-black text-xs">{rem.customerName}</b>
+                              <a
+                                href={`tel:${rem.mobile}`}
+                                className="text-gm-muted hover:text-gm-red font-mono text-[11px] flex items-center gap-1 mt-0.5"
+                              >
+                                <Phone className="w-3 h-3 text-gm-navy" />
+                                <span>{rem.mobile}</span>
+                              </a>
+                              {rem.city && <span className="text-[10px] text-gm-muted block">{rem.city}</span>}
+                            </td>
+                            <td className="p-3.5">
+                              <b className="text-gm-navy block font-bold text-xs">{rem.vehicleModel}</b>
+                              <span className="font-mono text-[11px] text-gm-red font-bold block">
+                                {rem.vehicleRegNo}
+                              </span>
+                            </td>
+                            <td className="p-3.5 text-[11px]">
+                              {rem.lastServiceDate ? (
+                                <div>
+                                  <span className="text-gm-muted block text-[10px] uppercase font-bold">Last Service:</span>
+                                  <b className="text-gm-navy">{formatDate(rem.lastServiceDate)}</b>
+                                </div>
+                              ) : rem.purchaseDate ? (
+                                <div>
+                                  <span className="text-gm-muted block text-[10px] uppercase font-bold">Purchase Date:</span>
+                                  <b className="text-gm-navy">{formatDate(rem.purchaseDate)}</b>
+                                </div>
+                              ) : (
+                                <span className="text-gm-muted">Not recorded</span>
+                              )}
+                            </td>
+                            <td className="p-3.5">
+                              <b className="text-gm-navy block text-xs font-black">
+                                {formatDate(rem.nextDueDate)}
+                              </b>
+                              {isOverdue ? (
+                                <span className="inline-block mt-0.5 px-2 py-0.5 rounded text-[9px] font-black uppercase bg-rose-50 text-rose-700 border border-rose-200">
+                                  {Math.abs(rem.daysDifference)} days overdue
+                                </span>
+                              ) : isThisWeek ? (
+                                <span className="inline-block mt-0.5 px-2 py-0.5 rounded text-[9px] font-black uppercase bg-amber-50 text-amber-800 border border-amber-200">
+                                  Due in {rem.daysDifference} days
+                                </span>
+                              ) : (
+                                <span className="inline-block mt-0.5 px-2 py-0.5 rounded text-[9px] font-bold uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                  Upcoming ({rem.daysDifference} days)
+                                </span>
+                              )}
+                            </td>
+                            <td className="p-3.5">
+                              <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-gm-navy border border-gm-line">
+                                {rem.serviceCycleType}
+                              </span>
+                            </td>
+                            <td className="p-3.5 text-right">
+                              <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                                <a
+                                  href={`https://wa.me/91${rem.mobile.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(rem.whatsappMessage)}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] inline-flex items-center gap-1 shadow-xs transition-colors cursor-pointer"
+                                  title="Send WhatsApp Service Reminder"
+                                >
+                                  <MessageSquare className="w-3.5 h-3.5" />
+                                  <span>WhatsApp</span>
+                                </a>
+
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setCustomerName(rem.customerName);
+                                    setCustomerMobile(rem.mobile);
+                                    setCustomerEmail(rem.email || '');
+                                    setVehicleModel(rem.vehicleModel);
+                                    setVehicleRegNumber(
+                                      rem.vehicleRegNo !== 'Reg Pending' && rem.vehicleRegNo !== 'Your vehicle'
+                                        ? rem.vehicleRegNo
+                                        : ''
+                                    );
+                                    setActiveTab('CREATE');
+                                  }}
+                                  className="px-2.5 py-1.5 rounded-lg bg-gm-navy hover:bg-gm-navy-dark text-white font-bold text-[11px] inline-flex items-center gap-1 shadow-xs transition-colors cursor-pointer"
+                                  title="Open new Job Card with customer prefilled"
+                                >
+                                  <Plus className="w-3.5 h-3.5" />
+                                  <span>Issue JC</span>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* ========================================================================= */}

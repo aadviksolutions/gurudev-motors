@@ -137,6 +137,23 @@ export async function POST(req: NextRequest) {
       return digits.slice(-10);
     };
 
+    // Helper to safely parse dates (supports YYYY-MM-DD, DD/MM/YYYY, DD-MM-YYYY)
+    const parseOptionalDate = (val: any): Date | null => {
+      if (!val) return null;
+      const str = String(val).trim();
+      if (!str) return null;
+      const dmyMatch = str.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+      if (dmyMatch) {
+        const d = parseInt(dmyMatch[1], 10);
+        const m = parseInt(dmyMatch[2], 10) - 1;
+        const y = parseInt(dmyMatch[3], 10);
+        const date = new Date(y, m, d);
+        if (!isNaN(date.getTime())) return date;
+      }
+      const parsed = new Date(str);
+      return !isNaN(parsed.getTime()) ? parsed : null;
+    };
+
     // Support Bulk Upload of Customers
     if (body.bulk === true || Array.isArray(body.customers)) {
       const customerList: any[] = Array.isArray(body.customers) ? body.customers : [];
@@ -190,6 +207,10 @@ export async function POST(req: NextRequest) {
             state: item.state ? String(item.state).trim() : 'Chhattisgarh',
             pincode: item.pincode ? String(item.pincode).trim() : null,
             notes: item.notes ? String(item.notes).trim() : 'Bulk uploaded customer',
+            vehicleModel: item.vehicleModel ? String(item.vehicleModel).trim() : null,
+            vehicleRegNo: item.vehicleRegNo ? String(item.vehicleRegNo).trim().toUpperCase() : null,
+            purchaseDate: parseOptionalDate(item.purchaseDate),
+            lastServiceDate: parseOptionalDate(item.lastServiceDate),
           },
         });
 
@@ -216,7 +237,22 @@ export async function POST(req: NextRequest) {
     }
 
     // Single Customer Creation (Direct without lead)
-    const { name, mobile, email, address, city, state, pincode, aadharNo, panNo, notes } = body;
+    const {
+      name,
+      mobile,
+      email,
+      address,
+      city,
+      state,
+      pincode,
+      aadharNo,
+      panNo,
+      notes,
+      vehicleModel,
+      vehicleRegNo,
+      purchaseDate,
+      lastServiceDate,
+    } = body;
 
     if (!name || !mobile) {
       return NextResponse.json({ error: 'Name and mobile number are required' }, { status: 400 });
@@ -251,6 +287,10 @@ export async function POST(req: NextRequest) {
         aadharNo: aadharNo?.trim() || null,
         panNo: panNo?.trim() || null,
         notes: notes?.trim() || null,
+        vehicleModel: vehicleModel?.trim() || null,
+        vehicleRegNo: vehicleRegNo?.trim()?.toUpperCase() || null,
+        purchaseDate: parseOptionalDate(purchaseDate),
+        lastServiceDate: parseOptionalDate(lastServiceDate),
       },
     });
 

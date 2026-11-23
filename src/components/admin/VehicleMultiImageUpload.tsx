@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import {
   Upload,
@@ -16,6 +16,10 @@ import {
   CheckCircle2,
   Smartphone,
   Laptop,
+  Camera,
+  Video,
+  CameraOff,
+  RotateCw,
 } from 'lucide-react';
 
 interface VehicleMultiImageUploadProps {
@@ -40,6 +44,98 @@ export default function VehicleMultiImageUpload({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const replaceFileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  const [showWebcamModal, setShowWebcamModal] = useState(false);
+  const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
+  const [webcamLoading, setWebcamLoading] = useState(false);
+  const [stream, setStream] = useState<MediaStream | null>(null);
+
+  const startWebcam = async (mode: 'environment' | 'user' = facingMode) => {
+    setError('');
+    setShowWebcamModal(true);
+    setWebcamLoading(true);
+
+    if (stream) {
+      stream.getTracks().forEach((track) => track.stop());
+    }
+
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('In-browser camera stream not supported. Opening system camera.');
+      }
+
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: mode },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+        },
+        audio: false,
+      });
+
+      setStream(mediaStream);
+      if (videoRef.current) {
+        videoRef.current.srcObject = mediaStream;
+        videoRef.current.play().catch(console.error);
+      }
+    } catch (err: any) {
+      console.warn('Webcam start error:', err);
+      setShowWebcamModal(false);
+      // Fallback directly to native device camera input
+      cameraInputRef.current?.click();
+    } finally {
+      setWebcamLoading(false);
+    }
+  };
+
+  const stopWebcam = () => {
+    if (stream) {
+      stream.getTracks().forEach((track) => track.stop());
+      setStream(null);
+    }
+    setShowWebcamModal(false);
+  };
+
+  const toggleFacingMode = () => {
+    const nextMode = facingMode === 'environment' ? 'user' : 'environment';
+    setFacingMode(nextMode);
+    startWebcam(nextMode);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, [stream]);
+
+  const captureWebcamSnapshot = () => {
+    if (!videoRef.current || !canvasRef.current) return;
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+
+    canvas.width = video.videoWidth || 1280;
+    canvas.height = video.videoHeight || 720;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    canvas.toBlob(
+      async (blob) => {
+        if (!blob) return;
+        const file = new File([blob], `vehicle-snap-${Date.now()}.jpg`, { type: 'image/jpeg' });
+        stopWebcam();
+        await handleMultipleFiles([file]);
+      },
+      'image/jpeg',
+      0.92
+    );
+  };
 
   // Handle uploading multiple files from device (computer or mobile gallery)
   const handleMultipleFiles = async (files: FileList | File[]) => {
@@ -215,12 +311,34 @@ export default function VehicleMultiImageUpload({
           <p className="text-[11px] text-gm-muted mt-0.5">{helperText}</p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={() => cameraInputRef.current?.click()}
+            disabled={uploading}
+            className="bg-gm-red hover:bg-gm-red-dark text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+            title="Capture directly via phone or tablet camera"
+          >
+            <Camera className="w-3.5 h-3.5" />
+            <span>Take Photo (Camera)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => startWebcam()}
+            disabled={uploading}
+            className="border border-gm-line hover:border-gm-navy text-gm-navy text-xs font-bold px-2.5 py-1.5 rounded-xl transition-colors flex items-center gap-1 cursor-pointer"
+            title="Open live camera viewfinder"
+          >
+            <Video className="w-3.5 h-3.5 text-blue-600" />
+            <span className="hidden sm:inline">Live Camera</span>
+          </button>
+
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
-            className="bg-gm-navy hover:bg-gm-navy/90 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
+            className="bg-gm-navy hover:bg-gm-navy/90 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
           >
             <Upload className="w-3.5 h-3.5 text-gm-red" />
             <span>Upload from Gallery / PC</span>
@@ -229,7 +347,7 @@ export default function VehicleMultiImageUpload({
           <button
             type="button"
             onClick={() => setShowUrlField(!showUrlField)}
-            className="border border-gm-line hover:border-gm-navy text-gm-navy text-xs font-bold px-2.5 py-1.5 rounded-xl transition-colors flex items-center gap-1"
+            className="border border-gm-line hover:border-gm-navy text-gm-navy text-xs font-bold px-2.5 py-1.5 rounded-xl transition-colors flex items-center gap-1 cursor-pointer"
           >
             <LinkIcon className="w-3.5 h-3.5" />
             <span>{showUrlField ? 'Close URL' : 'Add URL'}</span>
@@ -301,9 +419,29 @@ export default function VehicleMultiImageUpload({
           <p className="text-[11px] text-gm-muted mt-1 max-w-sm">
             Select multiple photos at once (Exterior, Front, Back, Cockpit, Engine, Odometer). Drag & Drop supported.
           </p>
-          <div className="mt-3 px-3 py-1.5 bg-gm-navy text-white text-[11px] font-bold rounded-lg group-hover:bg-gm-red transition-colors flex items-center gap-1.5">
-            <Plus className="w-3.5 h-3.5" />
-            <span>Select Photos Now</span>
+          <div className="mt-3 flex items-center gap-2 flex-wrap justify-center">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                cameraInputRef.current?.click();
+              }}
+              className="px-3.5 py-1.5 bg-gm-red text-white text-[11px] font-bold rounded-lg hover:bg-gm-red-dark transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
+            >
+              <Camera className="w-3.5 h-3.5" />
+              <span>Take Photo (Camera)</span>
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                fileInputRef.current?.click();
+              }}
+              className="px-3.5 py-1.5 bg-gm-navy text-white text-[11px] font-bold rounded-lg hover:bg-gm-navy/90 transition-colors flex items-center gap-1.5 cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Choose from Gallery / PC</span>
+            </button>
           </div>
         </div>
       ) : (
@@ -402,21 +540,33 @@ export default function VehicleMultiImageUpload({
               );
             })}
 
+            {/* Quick Add via Camera Tile */}
+            <div
+              onClick={() => cameraInputRef.current?.click()}
+              className="cursor-pointer border-2 border-dashed border-gm-line hover:border-gm-red rounded-xl aspect-[4/3] flex flex-col items-center justify-center text-center p-3 bg-red-50/30 hover:bg-red-50/70 transition-colors group"
+            >
+              <div className="w-8 h-8 rounded-lg bg-white shadow-xs border border-gm-line flex items-center justify-center text-gm-navy mb-1 group-hover:scale-110 transition-transform">
+                <Camera className="w-4 h-4 text-gm-red" />
+              </div>
+              <span className="text-[11px] font-bold text-gm-navy">+ Take Photo</span>
+              <span className="text-[9px] text-gm-muted">Through camera</span>
+            </div>
+
             {/* Quick Add More Tile */}
             <div
               onClick={() => fileInputRef.current?.click()}
               className="cursor-pointer border-2 border-dashed border-gm-line hover:border-gm-navy rounded-xl aspect-[4/3] flex flex-col items-center justify-center text-center p-3 bg-gm-soft/40 hover:bg-gm-soft transition-colors group"
             >
               <div className="w-8 h-8 rounded-lg bg-white shadow-xs border border-gm-line flex items-center justify-center text-gm-navy mb-1 group-hover:scale-110 transition-transform">
-                <Plus className="w-4 h-4 text-gm-red" />
+                <Plus className="w-4 h-4 text-gm-navy" />
               </div>
-              <span className="text-[11px] font-bold text-gm-navy">+ Add More Photos</span>
-              <span className="text-[9px] text-gm-muted">From device gallery</span>
+              <span className="text-[11px] font-bold text-gm-navy">+ Gallery / PC</span>
+              <span className="text-[9px] text-gm-muted">Multiple files</span>
             </div>
           </div>
 
           <div className="flex items-center justify-between text-[11px] text-gm-muted pt-1">
-            <span>Tip: Drag & drop files anytime or tap "+ Add More Photos" to include additional angles.</span>
+            <span>Tip: Tap "+ Take Photo" to use your mobile camera or "+ Gallery / PC" to choose existing photos.</span>
             <span className="font-semibold text-gm-navy">Total Photos: {images.length}</span>
           </div>
         </div>
@@ -434,6 +584,20 @@ export default function VehicleMultiImageUpload({
         className="hidden"
       />
 
+      {/* Hidden Camera Input for Taking Photos directly from device camera */}
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={(e) => {
+          if (e.target.files && e.target.files.length > 0) {
+            handleMultipleFiles(e.target.files);
+          }
+        }}
+        className="hidden"
+      />
+
       {/* Hidden Single-File Input for Replacing a specific image */}
       <input
         ref={replaceFileInputRef}
@@ -442,6 +606,77 @@ export default function VehicleMultiImageUpload({
         onChange={handleReplaceFile}
         className="hidden"
       />
+
+      {/* Hidden Canvas for Live Camera Frame Grabs */}
+      <canvas ref={canvasRef} className="hidden" />
+
+      {/* Live Camera Viewfinder Modal */}
+      {showWebcamModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl p-5 max-w-lg w-full border border-gm-line shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-gm-line">
+              <div className="flex items-center gap-2">
+                <Camera className="w-5 h-5 text-gm-red" />
+                <h3 className="text-sm font-black text-gm-navy uppercase tracking-wider">
+                  Live Camera Viewfinder
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={stopWebcam}
+                className="text-gm-muted hover:text-gm-navy p-1 rounded-lg cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="relative rounded-2xl overflow-hidden bg-black aspect-video flex items-center justify-center">
+              {webcamLoading && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-white gap-2 bg-black/60 z-10">
+                  <Loader2 className="w-6 h-6 animate-spin text-gm-red" />
+                  <span className="text-xs font-bold">Accessing camera...</span>
+                </div>
+              )}
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className="w-full h-full object-cover"
+              />
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
+              <button
+                type="button"
+                onClick={toggleFacingMode}
+                className="w-full sm:w-auto px-3 py-2 rounded-xl border border-gm-line hover:border-gm-navy text-xs font-bold text-gm-navy flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <RotateCw className="w-3.5 h-3.5" />
+                <span>Flip ({facingMode === 'environment' ? 'Rear' : 'Front'})</span>
+              </button>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={stopWebcam}
+                  className="flex-1 sm:flex-none px-4 py-2 rounded-xl border border-gm-line text-xs font-bold text-gm-muted hover:text-gm-navy transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={captureWebcamSnapshot}
+                  className="flex-1 sm:flex-none bg-gm-red hover:bg-gm-red-dark text-white text-xs font-black px-5 py-2.5 rounded-xl shadow-md transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Camera className="w-4 h-4" />
+                  <span>Snap Photo</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

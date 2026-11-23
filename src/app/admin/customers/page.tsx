@@ -49,6 +49,10 @@ export default function AdminCustomersPage() {
     aadharNo: '',
     panNo: '',
     notes: '',
+    vehicleModel: '',
+    vehicleRegNo: '',
+    purchaseDate: '',
+    lastServiceDate: '',
   });
 
   // Bulk Upload Modal State
@@ -94,7 +98,7 @@ export default function AdminCustomersPage() {
     }
   };
 
-  // Helper to parse CSV or Tab/Comma-separated customer rows
+  // Helper to parse CSV or Tab/Comma-separated customer rows with optional Vehicle details
   const parseCustomerRawText = (text: string) => {
     const lines = text
       .split(/\r?\n/)
@@ -113,21 +117,90 @@ export default function AdminCustomersPage() {
       firstLine.includes('phone') ||
       firstLine.includes('contact');
 
+    // Parse header positions if available
+    let nameIdx = 0;
+    let mobileIdx = 1;
+    let vehicleIdx = -1;
+    let regIdx = -1;
+    let purchaseDateIdx = -1;
+    let serviceDateIdx = -1;
+    let emailIdx = -1;
+    let addressIdx = -1;
+    let cityIdx = -1;
+
+    if (hasHeader) {
+      const headerParts = lines[0].includes('\t')
+        ? lines[0].split('\t')
+        : lines[0].split(',').map((h) => h.trim().toLowerCase());
+
+      headerParts.forEach((h, i) => {
+        const clean = h.replace(/[^a-z0-9]/g, '');
+        if (clean.includes('name') && nameIdx === 0) nameIdx = i;
+        else if (clean.includes('mobile') || clean.includes('phone') || clean.includes('contact')) mobileIdx = i;
+        else if (clean.includes('vehicle') || clean.includes('model') || clean.includes('bike')) vehicleIdx = i;
+        else if (clean.includes('reg') || clean.includes('plate') || clean.includes('rto')) regIdx = i;
+        else if (clean.includes('purchase') || clean.includes('sale') || clean.includes('buy')) purchaseDateIdx = i;
+        else if (clean.includes('service') || clean.includes('servicedate')) serviceDateIdx = i;
+        else if (clean.includes('email') || clean.includes('mail')) emailIdx = i;
+        else if (clean.includes('address') || clean.includes('addr') || clean.includes('location')) addressIdx = i;
+        else if (clean.includes('city') || clean.includes('town')) cityIdx = i;
+      });
+    }
+
     const dataLines = hasHeader ? lines.slice(1) : lines;
 
     const rows = dataLines.map((line, idx) => {
-      // Split by comma or tab
       const parts = line.includes('\t')
         ? line.split('\t')
         : line.split(',').map((p) => p.trim());
 
-      const name = (parts[0] || '').replace(/^["']|["']$/g, '').trim();
-      const rawMobile = (parts[1] || '').replace(/^["']|["']$/g, '').trim();
-      const email = (parts[2] || '').replace(/^["']|["']$/g, '').trim();
-      const address = (parts[3] || '').replace(/^["']|["']$/g, '').trim();
-      const city = (parts[4] || '').replace(/^["']|["']$/g, '').trim() || 'Raipur';
+      const getPart = (index: number) => (index >= 0 && index < parts.length ? (parts[index] || '').replace(/^["']|["']$/g, '').trim() : '');
 
-      // Clean mobile number (strip +91, spaces, dashes)
+      let name = '';
+      let rawMobile = '';
+      let vehicleModel = '';
+      let vehicleRegNo = '';
+      let purchaseDate = '';
+      let lastServiceDate = '';
+      let email = '';
+      let address = '';
+      let city = 'Raipur';
+
+      if (hasHeader && vehicleIdx !== -1) {
+        name = getPart(nameIdx);
+        rawMobile = getPart(mobileIdx);
+        vehicleModel = getPart(vehicleIdx);
+        vehicleRegNo = getPart(regIdx);
+        purchaseDate = getPart(purchaseDateIdx);
+        lastServiceDate = getPart(serviceDateIdx);
+        email = getPart(emailIdx);
+        address = getPart(addressIdx);
+        city = getPart(cityIdx) || 'Raipur';
+      } else {
+        // Fallback positional mapping
+        name = (parts[0] || '').replace(/^["']|["']$/g, '').trim();
+        rawMobile = (parts[1] || '').replace(/^["']|["']$/g, '').trim();
+
+        // Check if part 2 looks like an email or vehicle model
+        const p2 = (parts[2] || '').replace(/^["']|["']$/g, '').trim();
+        if (p2.includes('@')) {
+          // Legacy format: Name, Mobile, Email, Address, City
+          email = p2;
+          address = (parts[3] || '').replace(/^["']|["']$/g, '').trim();
+          city = (parts[4] || '').replace(/^["']|["']$/g, '').trim() || 'Raipur';
+        } else {
+          // Enhanced format: Name, Mobile, Vehicle Model, RegNo, PurchaseDate, LastServiceDate, Email, Address, City
+          vehicleModel = p2;
+          vehicleRegNo = (parts[3] || '').replace(/^["']|["']$/g, '').trim();
+          purchaseDate = (parts[4] || '').replace(/^["']|["']$/g, '').trim();
+          lastServiceDate = (parts[5] || '').replace(/^["']|["']$/g, '').trim();
+          email = (parts[6] || '').replace(/^["']|["']$/g, '').trim();
+          address = (parts[7] || '').replace(/^["']|["']$/g, '').trim();
+          city = (parts[8] || '').replace(/^["']|["']$/g, '').trim() || 'Raipur';
+        }
+      }
+
+      // Clean mobile number
       let digits = rawMobile.replace(/[^0-9]/g, '');
       if (digits.length > 10 && digits.startsWith('91')) {
         digits = digits.slice(2);
@@ -145,8 +218,12 @@ export default function AdminCustomersPage() {
         rowNum: idx + 1,
         name,
         mobile: cleanMobile || rawMobile,
-        email: email || '',
-        address: address || '',
+        vehicleModel,
+        vehicleRegNo: vehicleRegNo.toUpperCase(),
+        purchaseDate,
+        lastServiceDate,
+        email,
+        address,
         city,
         isValid,
         error,
@@ -174,10 +251,10 @@ export default function AdminCustomersPage() {
 
   const downloadSampleCsv = () => {
     const csvContent =
-      'Name,Mobile,Email,Address,City\n' +
-      'Rajesh Verma,9827110022,rajesh@example.com,Civil Lines,Raipur\n' +
-      'Sunita Agrawal,9425201199,sunita@example.com,Pandri,Raipur\n' +
-      'Mahesh Patel,7000619808,mahesh@example.com,Mahadevghat Chowk,Raipur\n';
+      'Name,Mobile,Vehicle Model,Registration No,Purchase Date,Last Service Date,Email,Address,City\n' +
+      'Rajesh Verma,9827110022,Hero Splendor+ XTEC,CG04MH1234,2024-03-15,2024-06-20,rajesh@example.com,Civil Lines,Raipur\n' +
+      'Sunita Agrawal,9425201199,Honda Activa 6G,CG04NZ5678,2024-01-10,2024-04-12,sunita@example.com,Pandri,Raipur\n' +
+      'Ram Kumar Sahu,7000619808,Bajaj Pulsar 150,CG04AB9999,2023-11-05,,ram@example.com,Mahadevghat Chowk,Raipur\n';
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -242,6 +319,10 @@ export default function AdminCustomersPage() {
           customers: validRows.map((r) => ({
             name: r.name,
             mobile: r.mobile,
+            vehicleModel: r.vehicleModel || undefined,
+            vehicleRegNo: r.vehicleRegNo || undefined,
+            purchaseDate: r.purchaseDate || undefined,
+            lastServiceDate: r.lastServiceDate || undefined,
             email: r.email || undefined,
             address: r.address || undefined,
             city: r.city || 'Raipur',
@@ -305,6 +386,10 @@ export default function AdminCustomersPage() {
                   aadharNo: '',
                   panNo: '',
                   notes: '',
+                  vehicleModel: '',
+                  vehicleRegNo: '',
+                  purchaseDate: '',
+                  lastServiceDate: '',
                 });
                 setAddCustomerModal(true);
               }}
@@ -364,6 +449,11 @@ export default function AdminCustomersPage() {
                       </td>
                       <td className="p-3.5">
                         <b className="text-gm-navy block font-black">{c.name}</b>
+                        {c.vehicleModel && (
+                          <span className="inline-flex items-center gap-1 mt-0.5 px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-gm-navy border border-gm-line">
+                            🏍️ {c.vehicleModel} {c.vehicleRegNo ? `• ${c.vehicleRegNo}` : ''}
+                          </span>
+                        )}
                         {c.email && (
                           <span className="text-gm-muted text-[11px] block">{c.email}</span>
                         )}
@@ -454,6 +544,30 @@ export default function AdminCustomersPage() {
                       {activeCustomer.address ? `${activeCustomer.address}, ${activeCustomer.city}, ${activeCustomer.state}` : activeCustomer.city}
                     </b>
                   </div>
+                  {(activeCustomer.vehicleModel || activeCustomer.vehicleRegNo) && (
+                    <div className="col-span-2 pt-2 border-t border-gm-line/60 grid grid-cols-2 gap-2">
+                      <div>
+                        <span className="text-gm-muted block text-[10px] uppercase font-bold">Vehicle Model</span>
+                        <b className="text-gm-navy">{activeCustomer.vehicleModel || 'N/A'}</b>
+                      </div>
+                      <div>
+                        <span className="text-gm-muted block text-[10px] uppercase font-bold">Registration No</span>
+                        <b className="text-gm-navy">{activeCustomer.vehicleRegNo || 'N/A'}</b>
+                      </div>
+                    </div>
+                  )}
+                  {(activeCustomer.purchaseDate || activeCustomer.lastServiceDate) && (
+                    <div className="col-span-2 grid grid-cols-2 gap-2">
+                      <div>
+                        <span className="text-gm-muted block text-[10px] uppercase font-bold">Purchase Date</span>
+                        <b className="text-gm-navy">{activeCustomer.purchaseDate ? formatDate(activeCustomer.purchaseDate) : 'N/A'}</b>
+                      </div>
+                      <div>
+                        <span className="text-gm-muted block text-[10px] uppercase font-bold">Last Service Date</span>
+                        <b className="text-gm-navy">{activeCustomer.lastServiceDate ? formatDate(activeCustomer.lastServiceDate) : 'N/A'}</b>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -678,6 +792,48 @@ export default function AdminCustomersPage() {
                     />
                   </div>
 
+                  <div>
+                    <label className="block text-xs font-bold text-gm-navy mb-1">Vehicle Model (Optional)</label>
+                    <input
+                      type="text"
+                      value={custForm.vehicleModel}
+                      onChange={(e) => setCustForm({ ...custForm, vehicleModel: e.target.value })}
+                      placeholder="e.g. Hero Splendor+ XTEC"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-gm-line text-xs font-semibold focus:outline-none focus:border-gm-navy"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gm-navy mb-1">Vehicle Reg Number (Optional)</label>
+                    <input
+                      type="text"
+                      value={custForm.vehicleRegNo}
+                      onChange={(e) => setCustForm({ ...custForm, vehicleRegNo: e.target.value.toUpperCase() })}
+                      placeholder="e.g. CG 04 MH 1234"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-gm-line text-xs font-semibold uppercase focus:outline-none focus:border-gm-navy"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gm-navy mb-1">Purchase / Sale Date (Optional)</label>
+                    <input
+                      type="date"
+                      value={custForm.purchaseDate}
+                      onChange={(e) => setCustForm({ ...custForm, purchaseDate: e.target.value })}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-gm-line text-xs font-semibold focus:outline-none focus:border-gm-navy"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gm-navy mb-1">Last Service Date (Optional)</label>
+                    <input
+                      type="date"
+                      value={custForm.lastServiceDate}
+                      onChange={(e) => setCustForm({ ...custForm, lastServiceDate: e.target.value })}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-gm-line text-xs font-semibold focus:outline-none focus:border-gm-navy"
+                    />
+                  </div>
+
                   <div className="sm:col-span-2">
                     <label className="block text-xs font-bold text-gm-navy mb-1">Notes / Preferences</label>
                     <textarea
@@ -892,7 +1048,8 @@ export default function AdminCustomersPage() {
                               <th className="p-2">#</th>
                               <th className="p-2">Name</th>
                               <th className="p-2">Mobile</th>
-                              <th className="p-2">City</th>
+                              <th className="p-2">Vehicle & Reg</th>
+                              <th className="p-2">Purchase Date</th>
                               <th className="p-2">Status</th>
                             </tr>
                           </thead>
@@ -902,7 +1059,10 @@ export default function AdminCustomersPage() {
                                 <td className="p-2 text-gm-muted text-[10px]">{r.rowNum}</td>
                                 <td className="p-2 font-bold text-gm-navy">{r.name || '—'}</td>
                                 <td className="p-2 font-mono text-[11px]">{r.mobile || '—'}</td>
-                                <td className="p-2 text-gm-muted text-[11px]">{r.city}</td>
+                                <td className="p-2 text-gm-navy text-[11px]">
+                                  {r.vehicleModel ? `${r.vehicleModel}${r.vehicleRegNo ? ` (${r.vehicleRegNo})` : ''}` : '—'}
+                                </td>
+                                <td className="p-2 text-gm-muted text-[11px] font-mono">{r.purchaseDate || '—'}</td>
                                 <td className="p-2">
                                   {r.isValid ? (
                                     <span className="text-emerald-600 font-bold text-[10px] flex items-center gap-1">

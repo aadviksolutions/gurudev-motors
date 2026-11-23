@@ -154,6 +154,7 @@ export async function POST(req: NextRequest) {
 
     // Lookup or create customer
     let customer = await prisma.customer.findUnique({ where: { mobile: cleanMobile } });
+    const saleDateObj = dateOfSale ? new Date(dateOfSale) : null;
     if (!customer) {
       const custCount = await prisma.customer.count();
       const customerNo = `CUST-${new Date().getFullYear()}-${String(custCount + 1).padStart(3, '0')}`;
@@ -164,15 +165,23 @@ export async function POST(req: NextRequest) {
           mobile: cleanMobile,
           email: customerEmail?.trim() || null,
           address: customerAddress?.trim() || null,
+          vehicleModel: vehicleModel.trim(),
+          vehicleRegNo: vehicleRegNumber.toUpperCase().trim(),
+          purchaseDate: saleDateObj,
+          lastServiceDate: new Date(),
         },
       });
-    } else if (customerAddress || customerEmail) {
+    } else {
       customer = await prisma.customer.update({
         where: { id: customer.id },
         data: {
           name: customerName.trim(),
           address: customerAddress?.trim() || customer.address,
           email: customerEmail?.trim() || customer.email,
+          vehicleModel: customer.vehicleModel || vehicleModel.trim(),
+          vehicleRegNo: customer.vehicleRegNo || vehicleRegNumber.toUpperCase().trim(),
+          purchaseDate: customer.purchaseDate || saleDateObj,
+          lastServiceDate: new Date(),
         },
       });
     }
@@ -421,6 +430,13 @@ export async function PUT(req: NextRequest) {
         advisor: { select: { id: true, name: true, phone: true } },
       },
     });
+
+    if (updated.customerId && (data.status === 'DELIVERED' || data.status === 'COMPLETED' || data.status === 'READY')) {
+      await prisma.customer.update({
+        where: { id: updated.customerId },
+        data: { lastServiceDate: new Date() },
+      }).catch(console.error);
+    }
 
     if (data.status === 'READY' && existing.status !== 'READY') {
       await prisma.notification.create({

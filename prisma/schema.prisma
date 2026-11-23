@@ -99,6 +99,10 @@ model Customer {
   aadharNo    String?
   panNo       String?
   notes       String?
+  vehicleModel     String?
+  vehicleRegNo     String?
+  purchaseDate     DateTime?
+  lastServiceDate  DateTime?
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 

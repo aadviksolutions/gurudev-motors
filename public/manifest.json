@@ -1,0 +1,43 @@
+{
+  "name": "Gurudev Motors Management System",
+  "short_name": "Gurudev Motors",
+  "description": "Gurudev Motors - Showroom, CRM Leads, Inventory Catalog & Workshop Service Portal",
+  "start_url": "/admin",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#FFFFFF",
+  "theme_color": "#BA0A00",
+  "categories": ["business", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/images/logo.jpeg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any"
+    },
+    {
+      "src": "/images/logo.jpeg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "CRM Leads",
+      "url": "/admin/leads",
+      "description": "Customer enquiries and follow-ups"
+    },
+    {
+      "name": "Vehicle Inventory",
+      "url": "/admin/vehicles",
+      "description": "Showroom vehicle inventory and gallery"
+    },
+    {
+      "name": "Workshop Service",
+      "url": "/admin/service",
+      "description": "Job cards and service due reminders"
+    }
+  ]
+}
