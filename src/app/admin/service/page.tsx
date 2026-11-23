@@ -278,16 +278,82 @@ export default function AdminServicePage() {
     fetchReminders();
   }, [reminderInterval, reminderFilter]);
 
+  // Selected existing customer tracking
+  const [selectedCustomerId, setSelectedCustomerId] = useState('');
+
+  // Auto-populate customer profile AND vehicle details from customer records
+  const applyCustomerDetails = (match: any) => {
+    if (!match) return;
+    setSelectedCustomerId(match.id || '');
+    if (match.name) setCustomerName(match.name);
+    if (match.mobile) setCustomerMobile(match.mobile);
+    if (match.address) setCustomerAddress(match.address);
+    if (match.email) setCustomerEmail(match.email);
+
+    // Extract vehicle details from customer profile, previous sales, or past job cards
+    const latestJob = match.jobCards?.[0];
+    const latestSale = match.sales?.[0];
+
+    const vModel =
+      match.vehicleModel ||
+      latestJob?.vehicleModel ||
+      (latestSale?.vehicle ? `${latestSale.vehicle.brand} ${latestSale.vehicle.model}` : '') ||
+      '';
+    if (vModel) setVehicleModel(vModel);
+
+    const vReg = match.vehicleRegNo || latestJob?.vehicleRegNumber || '';
+    if (vReg) setVehicleRegNumber(vReg);
+
+    const vColor = latestJob?.colour || latestSale?.vehicle?.color || '';
+    if (vColor) setColour(vColor);
+
+    const vFrame = latestJob?.frameNumber || latestSale?.chassisNumber || '';
+    if (vFrame) setFrameNumber(vFrame);
+
+    const vEngine = latestJob?.engineNumber || latestSale?.engineNumber || '';
+    if (vEngine) setEngineNumber(vEngine);
+
+    const vType = latestJob?.vehicleTypeKickSelf || 'Self';
+    if (vType) setVehicleTypeKickSelf(vType);
+
+    const vKey = latestJob?.keyNumber || '';
+    if (vKey) setKeyNumber(vKey);
+
+    const vSaleDate =
+      match.purchaseDate ||
+      latestJob?.dateOfSale ||
+      (latestSale?.deliveryDate ? latestSale.deliveryDate : null);
+    if (vSaleDate) {
+      try {
+        const dStr = typeof vSaleDate === 'string' ? vSaleDate.split('T')[0] : new Date(vSaleDate).toISOString().split('T')[0];
+        setDateOfSale(dStr);
+      } catch (e) {}
+    }
+  };
+
+  const handleClearCustomer = () => {
+    setSelectedCustomerId('');
+    setCustomerName('');
+    setCustomerMobile('');
+    setCustomerAddress('');
+    setCustomerEmail('');
+    setVehicleModel('');
+    setVehicleRegNumber('');
+    setFrameNumber('');
+    setEngineNumber('');
+    setColour('Standard');
+    setDateOfSale('');
+    setKeyNumber('');
+  };
+
   // Quick lookup customer on phone / name typing
   const handleMobileChange = (mobileInput: string) => {
     setCustomerMobile(mobileInput);
     const clean = mobileInput.replace(/[^0-9]/g, '');
     if (clean.length >= 10) {
-      const match = customers.find((c) => c.mobile.includes(clean));
+      const match = customers.find((c) => c.mobile && c.mobile.replace(/[^0-9]/g, '').includes(clean));
       if (match) {
-        if (!customerName) setCustomerName(match.name);
-        if (!customerAddress && match.address) setCustomerAddress(match.address);
-        if (!customerEmail && match.email) setCustomerEmail(match.email);
+        applyCustomerDetails(match);
       }
     }
   };
@@ -519,6 +585,7 @@ export default function AdminServicePage() {
       setSelectedJc(data.jobCard);
 
       // Reset form
+      setSelectedCustomerId('');
       setCustomJobCardNumber('');
       setCustomerName('');
       setCustomerMobile('');
@@ -614,10 +681,16 @@ New Raipura, Raipur (C.G.)`;
 
   // Convert Service Appointment into a Job Card directly
   const handleConvertAppointmentToJobCard = (apt: any) => {
-    setCustomerName(apt.customerName || apt.customer?.name || '');
-    setCustomerMobile(apt.mobile || apt.customer?.mobile || '');
-    setVehicleRegNumber(apt.regNumber || '');
-    setVehicleModel(apt.vehicleModel || '');
+    const cleanMob = (apt.mobile || apt.customer?.mobile || '').replace(/[^0-9]/g, '');
+    const cust = apt.customer || customers.find((c) => c.mobile && c.mobile.replace(/[^0-9]/g, '').includes(cleanMob));
+    if (cust) {
+      applyCustomerDetails(cust);
+    } else {
+      setCustomerName(apt.customerName || apt.customer?.name || '');
+      setCustomerMobile(apt.mobile || apt.customer?.mobile || '');
+    }
+    if (apt.regNumber) setVehicleRegNumber(apt.regNumber);
+    if (apt.vehicleModel) setVehicleModel(apt.vehicleModel);
     setPhysicalCondition(apt.serviceType ? `Service Type: ${apt.serviceType}. ${apt.notes || ''}` : apt.notes || '');
     setStatus('RECEIVED');
     setActiveTab('CREATE');
@@ -970,10 +1043,67 @@ New Raipura, Raipur (C.G.)`;
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Left: Customer Details */}
                 <div className="space-y-3 bg-gm-soft/40 p-4 rounded-xl border border-gm-line">
-                  <h3 className="text-xs font-black text-gm-navy uppercase tracking-wider border-b border-gm-line pb-1.5 flex items-center gap-1.5">
-                    <User className="w-3.5 h-3.5 text-gm-red" />
-                    <span>Customer Details</span>
-                  </h3>
+                  <div className="flex items-center justify-between border-b border-gm-line pb-1.5">
+                    <h3 className="text-xs font-black text-gm-navy uppercase tracking-wider flex items-center gap-1.5">
+                      <User className="w-3.5 h-3.5 text-gm-red" />
+                      <span>Customer Details</span>
+                    </h3>
+                    {selectedCustomerId && (
+                      <button
+                        type="button"
+                        onClick={handleClearCustomer}
+                        className="text-[10px] font-bold text-gm-red hover:underline cursor-pointer"
+                      >
+                        Reset / Clear Form
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Select Existing Customer Dropdown (Quick Auto-fill) */}
+                  <div className="bg-white p-3 rounded-xl border border-gm-line space-y-1.5 shadow-xs">
+                    <label className="block text-[11px] font-black uppercase text-gm-navy flex items-center gap-1.5">
+                      <Search className="w-3.5 h-3.5 text-gm-red" />
+                      <span>Select Existing Customer (Auto-fills Vehicle &amp; Profile)</span>
+                    </label>
+                    <select
+                      value={selectedCustomerId}
+                      onChange={(e) => {
+                        const cust = customers.find((c) => c.id === e.target.value);
+                        if (cust) {
+                          applyCustomerDetails(cust);
+                        } else {
+                          handleClearCustomer();
+                        }
+                      }}
+                      className="w-full px-3 py-2 rounded-xl border border-gm-line text-xs font-bold text-gm-navy bg-white focus:outline-none focus:border-gm-navy cursor-pointer"
+                    >
+                      <option value="">-- Click to choose existing customer --</option>
+                      {customers.map((c) => {
+                        const vDisplay =
+                          c.vehicleModel ||
+                          c.jobCards?.[0]?.vehicleModel ||
+                          (c.sales?.[0]?.vehicle ? `${c.sales[0].vehicle.brand} ${c.sales[0].vehicle.model}` : null) ||
+                          'Vehicle not on file';
+
+                        const rDisplay = c.vehicleRegNo || c.jobCards?.[0]?.vehicleRegNumber || '';
+
+                        return (
+                          <option key={c.id} value={c.id}>
+                            {c.name} — {c.mobile} [🏍️ {vDisplay}{rDisplay ? ` • ${rDisplay}` : ''}]
+                          </option>
+                        );
+                      })}
+                    </select>
+
+                    {selectedCustomerId && (
+                      <div className="flex items-center gap-2 p-2 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-800 text-[11px] font-bold">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+                        <span>
+                          Customer profile &amp; vehicle details auto-populated for <b>{customerName}</b> ({vehicleModel || 'Vehicle'} - {vehicleRegNumber || 'Reg Pending'})
+                        </span>
+                      </div>
+                    )}
+                  </div>
 
                   <div>
                     <label className="block text-[11px] font-bold text-gm-navy mb-1">Customer Mobile Number *</label>
@@ -985,7 +1115,9 @@ New Raipura, Raipur (C.G.)`;
                       onChange={(e) => handleMobileChange(e.target.value)}
                       className="w-full px-3 py-2 rounded-xl border border-gm-line text-xs font-mono font-bold bg-white"
                     />
-                    <span className="text-[10px] text-gm-muted mt-0.5 block">Auto-fetches details for repeat customers</span>
+                    <span className="text-[10px] text-gm-muted mt-0.5 block">
+                      Typing a 10-digit mobile automatically fetches previous vehicle &amp; service history
+                    </span>
                   </div>
 
                   <div>
@@ -1028,10 +1160,17 @@ New Raipura, Raipur (C.G.)`;
 
                 {/* Right: Vehicle Details */}
                 <div className="space-y-3 bg-gm-soft/40 p-4 rounded-xl border border-gm-line">
-                  <h3 className="text-xs font-black text-gm-navy uppercase tracking-wider border-b border-gm-line pb-1.5 flex items-center gap-1.5">
-                    <Car className="w-3.5 h-3.5 text-gm-red" />
-                    <span>Vehicle Details</span>
-                  </h3>
+                  <div className="flex items-center justify-between border-b border-gm-line pb-1.5">
+                    <h3 className="text-xs font-black text-gm-navy uppercase tracking-wider flex items-center gap-1.5">
+                      <Car className="w-3.5 h-3.5 text-gm-red" />
+                      <span>Vehicle Details</span>
+                    </h3>
+                    {vehicleModel && (
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                        Vehicle Loaded
+                      </span>
+                    )}
+                  </div>
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
