@@ -22,6 +22,7 @@ import {
   AlertCircle,
   Download,
   UserPlus,
+  Bike,
 } from 'lucide-react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { formatCurrency, formatDate, getStatusColor } from '@/lib/utils';
@@ -450,8 +451,9 @@ export default function AdminCustomersPage() {
                       <td className="p-3.5">
                         <b className="text-gm-navy block font-black">{c.name}</b>
                         {c.vehicleModel && (
-                          <span className="inline-flex items-center gap-1 mt-0.5 px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-gm-navy border border-gm-line">
-                            🏍️ {c.vehicleModel} {c.vehicleRegNo ? `• ${c.vehicleRegNo}` : ''}
+                          <span className="inline-flex items-center gap-1.5 mt-0.5 px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-gm-navy border border-gm-line">
+                            <Bike className="w-3 h-3 text-gm-red" />
+                            <span>{c.vehicleModel} {c.vehicleRegNo ? `• ${c.vehicleRegNo}` : ''}</span>
                           </span>
                         )}
                         {c.email && (

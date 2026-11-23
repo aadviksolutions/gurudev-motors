@@ -22,6 +22,8 @@ import {
   ShieldCheck,
   RefreshCw,
   ExternalLink,
+  Camera,
+  AlertTriangle,
 } from 'lucide-react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import VehicleMultiImageUpload from '@/components/admin/VehicleMultiImageUpload';
@@ -464,8 +466,9 @@ export default function AdminVehiclesPage() {
                                   unoptimized
                                 />
                                 {Array.isArray(v.images) && v.images.length > 1 && (
-                                  <span className="absolute bottom-0 right-0 bg-black/75 text-white text-[9px] font-mono px-1 rounded-tl flex items-center gap-0.5">
-                                    📷{v.images.length}
+                                  <span className="absolute bottom-0 right-0 bg-black/75 text-white text-[9px] font-mono px-1.5 py-0.5 rounded-tl flex items-center gap-1">
+                                    <Camera className="w-2.5 h-2.5 text-white" />
+                                    <span>{v.images.length}</span>
                                   </span>
                                 )}
                               </div>
@@ -716,8 +719,9 @@ export default function AdminVehiclesPage() {
                     {editingVehicle ? 'Edit Vehicle' : 'Add Vehicle to Inventory'}
                   </h3>
                   {!isGlobalAdmin && (
-                    <span className="text-[11px] text-amber-700 font-bold block mt-0.5">
-                      ⚠️ Note: This change requires Administrator approval before publishing to live inventory.
+                    <span className="text-[11px] text-amber-700 font-bold flex items-center gap-1.5 mt-0.5">
+                      <AlertTriangle className="w-3.5 h-3.5 text-amber-600 inline shrink-0" />
+                      <span>Note: This change requires Administrator approval before publishing to live inventory.</span>
                     </span>
                   )}
                 </div>

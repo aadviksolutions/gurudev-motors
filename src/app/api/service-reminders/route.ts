@@ -137,11 +137,11 @@ export async function GET(req: NextRequest) {
       const cleanModel = model || 'Two-Wheeler';
 
       const whatsappText =
-        `Namaste ${c.name} ji! 🛵 Greetings from Gurudev Motors Raipur.\n\n` +
+        `Namaste ${c.name} ji! Greetings from Gurudev Motors Raipur.\n\n` +
         `This is a friendly reminder that your ${cleanModel} (${cleanReg}) is due for ${serviceCycleType} on *${formattedDueDate}*.\n\n` +
         `Regular servicing keeps your engine in peak condition, maximizes fuel mileage, and ensures complete riding safety.\n\n` +
-        `📍 Visit: Gurudev Motors, Near Ring Road, Raipura, Raipur\n` +
-        `📞 Call/Book: 0771-4001234 / +91 ${c.mobile}\n\n` +
+        `Location: Gurudev Motors, Near Ring Road, Raipura, Raipur\n` +
+        `Phone / Booking: 0771-4001234 / +91 ${c.mobile}\n\n` +
         `We look forward to serving you!`;
 
       allReminders.push({

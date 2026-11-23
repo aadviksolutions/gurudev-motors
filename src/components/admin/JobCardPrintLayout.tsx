@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { formatCurrency, formatDate } from '@/lib/utils';
-import { Printer, Download, Share2, X, MessageSquare, ArrowLeft } from 'lucide-react';
+import { Printer, Download, Share2, X, MessageSquare, ArrowLeft, Scissors } from 'lucide-react';
 
 interface JobCardPrintLayoutProps {
   jobCard: any;
@@ -399,8 +399,10 @@ export default function JobCardPrintLayout({
           {/* DETACHABLE SCISSORS LINE */}
           <div className="relative py-2 text-center bg-white">
             <div className="absolute inset-x-0 top-1/2 border-b-2 border-dashed border-slate-500" />
-            <span className="relative z-10 bg-white px-3 text-[9px] font-black uppercase tracking-widest text-slate-600">
-              ✂ DETACHABLE CUSTOMER COPY / GATE PASS SLIP ✂
+            <span className="relative z-10 bg-white px-3 text-[9px] font-black uppercase tracking-widest text-slate-600 inline-flex items-center gap-2">
+              <Scissors className="w-3 h-3 text-slate-500 inline-block" />
+              <span>DETACHABLE CUSTOMER COPY / GATE PASS SLIP</span>
+              <Scissors className="w-3 h-3 text-slate-500 inline-block -scale-x-100" />
             </span>
           </div>
 

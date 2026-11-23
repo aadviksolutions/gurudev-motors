@@ -1089,7 +1089,7 @@ New Raipura, Raipur (C.G.)`;
 
                         return (
                           <option key={c.id} value={c.id}>
-                            {c.name} — {c.mobile} [🏍️ {vDisplay}{rDisplay ? ` • ${rDisplay}` : ''}]
+                            {c.name} — {c.mobile} (Vehicle: {vDisplay}{rDisplay ? ` • ${rDisplay}` : ''})
                           </option>
                         );
                       })}
