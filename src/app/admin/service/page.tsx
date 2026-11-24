@@ -34,6 +34,9 @@ import {
 } from 'lucide-react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import JobCardPrintLayout from '@/components/admin/JobCardPrintLayout';
+import CustomerSearchCombobox from '@/components/admin/CustomerSearchCombobox';
+import ServiceItemAutocomplete from '@/components/admin/ServiceItemAutocomplete';
+import { PREDEFINED_SERVICES, ServiceCatalogItem } from '@/lib/service-catalog';
 import { formatCurrency, formatDate, getStatusColor } from '@/lib/utils';
 
 type ServiceTab = 'JOBS' | 'CREATE' | 'REMINDERS' | 'APPOINTMENTS';
@@ -45,6 +48,7 @@ interface RepairRequestRow {
 }
 
 interface WorkItemRow {
+  serviceCode?: string;
   itemType?: 'SERVICE' | 'PARTS';
   description: string;
   quantity: number;
@@ -142,9 +146,8 @@ export default function AdminServicePage() {
   // Dynamic Work Items & Estimates Table (Billing with Service/Parts dropdown)
   const [isGstBill, setIsGstBill] = useState(false); // Default is Non-GST bill
   const [workItems, setWorkItems] = useState<WorkItemRow[]>([
-    { itemType: 'PARTS', description: 'Synthetic 10W-30 4T Engine Oil', quantity: 1, labourCharges: 0, partsCharges: 450, total: 450 },
-    { itemType: 'PARTS', description: 'OEM Oil Filter Element', quantity: 1, labourCharges: 0, partsCharges: 120, total: 120 },
-    { itemType: 'SERVICE', description: 'General Periodic Maintenance Labour', quantity: 1, labourCharges: 350, partsCharges: 0, total: 350 },
+    { serviceCode: 'SRV-01', itemType: 'SERVICE', description: 'General Service', quantity: 1, labourCharges: 350, partsCharges: 0, total: 350 },
+    { serviceCode: 'SRV-03', itemType: 'PARTS', description: 'Engine Oil', quantity: 1, labourCharges: 0, partsCharges: 450, total: 450 },
   ]);
 
   // Estimates & Delivery Details
@@ -434,8 +437,40 @@ export default function AdminServicePage() {
   const addWorkItemRow = () => {
     setWorkItems([
       ...workItems,
-      { itemType: 'PARTS', description: '', quantity: 1, labourCharges: 0, partsCharges: 0, total: 0 },
+      { serviceCode: '', itemType: 'SERVICE', description: '', quantity: 1, labourCharges: 0, partsCharges: 0, total: 0 },
     ]);
+  };
+
+  const handleSelectWorkCatalogItem = (idx: number, item: ServiceCatalogItem) => {
+    const updated = [...workItems];
+    const isService = item.type === 'SERVICE';
+    updated[idx] = {
+      ...updated[idx],
+      serviceCode: item.code,
+      description: item.name,
+      itemType: item.type,
+      labourCharges: isService ? (item.defaultLabour || 0) : 0,
+      partsCharges: !isService ? (item.defaultParts || 0) : 0,
+      quantity: 1,
+      total: isService ? (item.defaultLabour || 0) : (item.defaultParts || 0),
+    };
+    setWorkItems(updated);
+  };
+
+  const handleSelectEditCatalogItem = (idx: number, item: ServiceCatalogItem) => {
+    const updated = [...editWorkItems];
+    const isService = item.type === 'SERVICE';
+    updated[idx] = {
+      ...updated[idx],
+      serviceCode: item.code,
+      description: item.name,
+      itemType: item.type,
+      labourCharges: isService ? (item.defaultLabour || 0) : 0,
+      partsCharges: !isService ? (item.defaultParts || 0) : 0,
+      quantity: 1,
+      total: isService ? (item.defaultLabour || 0) : (item.defaultParts || 0),
+    };
+    setEditWorkItems(updated);
   };
 
   const updateWorkItemRow = (idx: number, field: keyof WorkItemRow, val: any) => {
@@ -472,7 +507,7 @@ export default function AdminServicePage() {
       parsedWork = [];
     }
     if (!Array.isArray(parsedWork) || parsedWork.length === 0) {
-      parsedWork = [{ itemType: 'SERVICE', description: 'General Periodic Maintenance Labour', quantity: 1, labourCharges: 350, partsCharges: 0, total: 350 }];
+      parsedWork = [{ serviceCode: 'SRV-01', itemType: 'SERVICE', description: 'General Service', quantity: 1, labourCharges: 350, partsCharges: 0, total: 350 }];
     } else {
       parsedWork = parsedWork.map((item) => ({
         ...item,
@@ -521,7 +556,7 @@ export default function AdminServicePage() {
   const addEditWorkItemRow = () => {
     setEditWorkItems([
       ...editWorkItems,
-      { itemType: 'PARTS', description: '', quantity: 1, labourCharges: 0, partsCharges: 0, total: 0 },
+      { serviceCode: '', itemType: 'SERVICE', description: '', quantity: 1, labourCharges: 0, partsCharges: 0, total: 0 },
     ]);
   };
 
@@ -605,6 +640,17 @@ export default function AdminServicePage() {
 
     setSubmitting(true);
     try {
+      let finalRequests = repairRequests.filter((r) => r.regularRequest || r.specialRequest || r.actionTaken);
+      if (finalRequests.length === 0 && workItems.length > 0) {
+        finalRequests = workItems
+          .filter((w) => w.description || w.serviceCode)
+          .map((w) => ({
+            regularRequest: w.serviceCode ? `[${w.serviceCode}] ${w.description}` : w.description,
+            specialRequest: w.itemType === 'PARTS' ? 'Parts Replacement' : 'Service Routine',
+            actionTaken: 'Inspected and serviced',
+          }));
+      }
+
       const payload = {
         customJobCardNumber: customJobCardNumber.trim() || undefined,
         customerName: customerName.trim(),
@@ -627,7 +673,7 @@ export default function AdminServicePage() {
         serviceTypes,
         serviceTypeNumbers: { freeServiceNo, paidServiceNo },
         physicalCondition: physicalCondition.trim(),
-        repairRequests: repairRequests.filter((r) => r.regularRequest || r.specialRequest || r.actionTaken),
+        repairRequests: finalRequests,
         workItems: workItems.filter((w) => w.description || w.labourCharges || w.partsCharges),
         labourTotal: calculatedLabour,
         partsTotal: calculatedParts,
@@ -803,7 +849,9 @@ New Raipura, Raipur (C.G.)`;
           />
         )}
 
-        {/* Top Header */}
+        {/* Regular Admin Dashboard Content (Hidden when printing Job Card) */}
+        <div className={`space-y-6 ${printJc ? 'print:hidden' : ''}`}>
+          {/* Top Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-black text-gm-navy tracking-tight flex items-center gap-2">
@@ -1150,50 +1198,16 @@ New Raipura, Raipur (C.G.)`;
                     )}
                   </div>
 
-                  {/* Select Existing Customer Dropdown (Quick Auto-fill) */}
+                  {/* Search Existing Customer Combobox (Quick Auto-fill with Live Typing) */}
                   <div className="bg-white p-3 rounded-xl border border-gm-line space-y-1.5 shadow-xs">
-                    <label className="block text-[11px] font-black uppercase text-gm-navy flex items-center gap-1.5">
-                      <Search className="w-3.5 h-3.5 text-gm-red" />
-                      <span>Select Existing Customer (Auto-fills Vehicle &amp; Profile)</span>
-                    </label>
-                    <select
-                      value={selectedCustomerId}
-                      onChange={(e) => {
-                        const cust = customers.find((c) => c.id === e.target.value);
-                        if (cust) {
-                          applyCustomerDetails(cust);
-                        } else {
-                          handleClearCustomer();
-                        }
-                      }}
-                      className="w-full px-3 py-2 rounded-xl border border-gm-line text-xs font-bold text-gm-navy bg-white focus:outline-none focus:border-gm-navy cursor-pointer"
-                    >
-                      <option value="">-- Click to choose existing customer --</option>
-                      {customers.map((c) => {
-                        const vDisplay =
-                          c.vehicleModel ||
-                          c.jobCards?.[0]?.vehicleModel ||
-                          (c.sales?.[0]?.vehicle ? `${c.sales[0].vehicle.brand} ${c.sales[0].vehicle.model}` : null) ||
-                          'Vehicle not on file';
-
-                        const rDisplay = c.vehicleRegNo || c.jobCards?.[0]?.vehicleRegNumber || '';
-
-                        return (
-                          <option key={c.id} value={c.id}>
-                            {c.name} — {c.mobile} (Vehicle: {vDisplay}{rDisplay ? ` • ${rDisplay}` : ''})
-                          </option>
-                        );
-                      })}
-                    </select>
-
-                    {selectedCustomerId && (
-                      <div className="flex items-center gap-2 p-2 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-800 text-[11px] font-bold">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
-                        <span>
-                          Customer profile &amp; vehicle details auto-populated for <b>{customerName}</b> ({vehicleModel || 'Vehicle'} - {vehicleRegNumber || 'Reg Pending'})
-                        </span>
-                      </div>
-                    )}
+                    <CustomerSearchCombobox
+                      customers={customers}
+                      selectedCustomerId={selectedCustomerId}
+                      selectedCustomerName={customerName}
+                      selectedVehicleInfo={`${vehicleModel || 'Vehicle'}${vehicleRegNumber ? ` • ${vehicleRegNumber}` : ''}`}
+                      onSelectCustomer={(cust) => applyCustomerDetails(cust)}
+                      onClearCustomer={handleClearCustomer}
+                    />
                   </div>
 
                   <div>
@@ -1502,6 +1516,7 @@ New Raipura, Raipur (C.G.)`;
                     <div className="col-span-4">
                       <input
                         type="text"
+                        list="catalog-services-list"
                         placeholder="e.g. Engine oil change"
                         value={row.regularRequest}
                         onChange={(e) => updateRequestRow(idx, 'regularRequest', e.target.value)}
@@ -1602,9 +1617,12 @@ New Raipura, Raipur (C.G.)`;
               <div className="space-y-2">
                 <div className="grid grid-cols-12 gap-2 text-[10px] font-black uppercase text-gm-navy bg-gm-soft p-2 rounded-xl">
                   <div className="col-span-2">Type</div>
-                  <div className="col-span-4">Work / Part Description</div>
-                  <div className="col-span-2 text-center">Qty</div>
-                  <div className="col-span-3 text-right">Rate / Charge (₹)</div>
+                  <div className="col-span-6 grid grid-cols-6 gap-2">
+                    <span className="col-span-2">Service Code</span>
+                    <span className="col-span-4">Work / Part Description (Type keyword)</span>
+                  </div>
+                  <div className="col-span-1 text-center">Qty</div>
+                  <div className="col-span-2 text-right">Rate / Charge (₹)</div>
                   <div className="col-span-1 text-center">Del</div>
                 </div>
 
@@ -1615,31 +1633,31 @@ New Raipura, Raipur (C.G.)`;
                       {/* Type Dropdown */}
                       <div className="col-span-2">
                         <select
-                          value={item.itemType || 'PARTS'}
+                          value={item.itemType || 'SERVICE'}
                           onChange={(e) => updateWorkItemRow(idx, 'itemType', e.target.value as any)}
                           className="w-full px-2 py-1.5 rounded-lg border border-gm-line text-xs font-bold bg-white focus:outline-none"
                         >
-                          <option value="PARTS">Parts</option>
                           <option value="SERVICE">Service</option>
+                          <option value="PARTS">Parts</option>
                         </select>
                       </div>
 
-                      {/* Description */}
-                      <div className="col-span-4">
-                        <input
-                          type="text"
-                          placeholder={isService ? 'Service / Labour description...' : 'Part / Spare name...'}
-                          value={item.description}
-                          onChange={(e) => updateWorkItemRow(idx, 'description', e.target.value)}
-                          className="w-full px-2.5 py-1.5 rounded-lg border border-gm-line text-xs font-medium"
-                        />
-                      </div>
+                      {/* Service Code & Description with Autocomplete */}
+                      <ServiceItemAutocomplete
+                        serviceCode={item.serviceCode || ''}
+                        description={item.description}
+                        itemType={item.itemType || 'SERVICE'}
+                        onSelect={(catalogItem) => handleSelectWorkCatalogItem(idx, catalogItem)}
+                        onCodeChange={(code) => updateWorkItemRow(idx, 'serviceCode', code)}
+                        onDescriptionChange={(desc) => updateWorkItemRow(idx, 'description', desc)}
+                        placeholder={isService ? 'Type service (e.g. Engine Oil, Brake...)' : 'Part / Spare name...'}
+                      />
 
                       {/* Quantity: Hidden when Service (fixed to 1), Shown when Parts */}
-                      <div className="col-span-2 text-center">
+                      <div className="col-span-1 text-center">
                         {isService ? (
                           <span className="text-[11px] font-bold text-gm-muted block py-1.5 bg-gm-soft/50 rounded-lg">
-                            — (1 Job)
+                            1
                           </span>
                         ) : (
                           <input
@@ -1647,17 +1665,17 @@ New Raipura, Raipur (C.G.)`;
                             min="1"
                             value={item.quantity}
                             onChange={(e) => updateWorkItemRow(idx, 'quantity', Number(e.target.value))}
-                            className="w-full px-2.5 py-1.5 rounded-lg border border-gm-line text-xs font-mono font-bold text-center"
+                            className="w-full px-1.5 py-1.5 rounded-lg border border-gm-line text-xs font-mono font-bold text-center"
                           />
                         )}
                       </div>
 
                       {/* Rate / Charge */}
-                      <div className="col-span-3">
+                      <div className="col-span-2">
                         <input
                           type="number"
                           min="0"
-                          placeholder={isService ? 'Labour Rate (₹)' : 'Part Unit Price (₹)'}
+                          placeholder={isService ? 'Labour Rate (₹)' : 'Part Price (₹)'}
                           value={isService ? item.labourCharges : item.partsCharges}
                           onChange={(e) => {
                             if (isService) {
@@ -1666,7 +1684,7 @@ New Raipura, Raipur (C.G.)`;
                               updateWorkItemRow(idx, 'partsCharges', Number(e.target.value));
                             }
                           }}
-                          className="w-full px-2.5 py-1.5 rounded-lg border border-gm-line text-xs font-mono font-bold text-right"
+                          className="w-full px-2 py-1.5 rounded-lg border border-gm-line text-xs font-mono font-bold text-right"
                         />
                       </div>
 
@@ -2457,9 +2475,10 @@ New Raipura, Raipur (C.G.)`;
                       <thead className="bg-gm-soft/80 text-gm-muted uppercase text-[10px] font-bold">
                         <tr>
                           <th className="p-2.5 w-24">Type</th>
+                          <th className="p-2.5 w-28">Service Code</th>
                           <th className="p-2.5">Work / Part Description</th>
-                          <th className="p-2.5 w-20 text-center">Qty</th>
-                          <th className="p-2.5 w-32 text-right">Rate / Charge (₹)</th>
+                          <th className="p-2.5 w-16 text-center">Qty</th>
+                          <th className="p-2.5 w-28 text-right">Rate / Charge (₹)</th>
                           <th className="p-2.5 w-24 text-right">Total (₹)</th>
                           <th className="p-2.5 w-10 text-center"></th>
                         </tr>
@@ -2471,19 +2490,44 @@ New Raipura, Raipur (C.G.)`;
                             <tr key={idx} className="hover:bg-gm-soft/30">
                               <td className="p-2">
                                 <select
-                                  value={item.itemType || 'PARTS'}
+                                  value={item.itemType || 'SERVICE'}
                                   onChange={(e) => updateEditWorkItemRow(idx, 'itemType', e.target.value as any)}
                                   className="w-full px-2 py-1.5 rounded-lg border border-gm-line text-xs font-bold bg-white focus:outline-none"
                                 >
-                                  <option value="PARTS">Parts</option>
                                   <option value="SERVICE">Service</option>
+                                  <option value="PARTS">Parts</option>
                                 </select>
                               </td>
                               <td className="p-2">
                                 <input
                                   type="text"
+                                  list="catalog-codes-list"
+                                  value={item.serviceCode || ''}
+                                  onChange={(e) => {
+                                    const code = e.target.value.toUpperCase();
+                                    updateEditWorkItemRow(idx, 'serviceCode', code);
+                                    const match = PREDEFINED_SERVICES.find((s) => s.code.toUpperCase() === code);
+                                    if (match) {
+                                      handleSelectEditCatalogItem(idx, match);
+                                    }
+                                  }}
+                                  placeholder="SRV-01"
+                                  className="w-full px-2 py-1.5 rounded-lg border border-gm-line text-xs font-mono font-bold uppercase focus:outline-none"
+                                />
+                              </td>
+                              <td className="p-2">
+                                <input
+                                  type="text"
+                                  list="catalog-services-list"
                                   value={item.description}
-                                  onChange={(e) => updateEditWorkItemRow(idx, 'description', e.target.value)}
+                                  onChange={(e) => {
+                                    const desc = e.target.value;
+                                    updateEditWorkItemRow(idx, 'description', desc);
+                                    const match = PREDEFINED_SERVICES.find((s) => s.name.toLowerCase() === desc.toLowerCase());
+                                    if (match) {
+                                      handleSelectEditCatalogItem(idx, match);
+                                    }
+                                  }}
                                   placeholder={isService ? 'Service / Labour description...' : 'Part / Spare name...'}
                                   className="w-full px-2 py-1.5 rounded-lg border border-gm-line text-xs font-medium focus:outline-none focus:border-gm-navy"
                                 />
@@ -2611,6 +2655,7 @@ New Raipura, Raipur (C.G.)`;
                             <td className="p-2">
                               <input
                                 type="text"
+                                list="catalog-services-list"
                                 value={req.regularRequest}
                                 onChange={(e) => updateEditRequestRow(idx, 'regularRequest', e.target.value)}
                                 placeholder="Regular customer request..."
@@ -2745,6 +2790,23 @@ New Raipura, Raipur (C.G.)`;
             </div>
           </div>
         )}
+        </div>
+
+        {/* Browser Native Datalist Suggestions for Predefined Service Catalog */}
+        <datalist id="catalog-services-list">
+          {PREDEFINED_SERVICES.map((s) => (
+            <option key={s.code} value={s.name}>
+              [{s.code}] {s.name} ({s.type})
+            </option>
+          ))}
+        </datalist>
+        <datalist id="catalog-codes-list">
+          {PREDEFINED_SERVICES.map((s) => (
+            <option key={s.code} value={s.code}>
+              {s.code}: {s.name}
+            </option>
+          ))}
+        </datalist>
       </div>
     </AdminLayout>
   );

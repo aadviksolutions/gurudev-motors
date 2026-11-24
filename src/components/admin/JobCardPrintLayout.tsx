@@ -32,6 +32,24 @@ export default function JobCardPrintLayout({
     repairRequestsArr = [];
   }
 
+  let workItemsArr: any[] = [];
+  try {
+    workItemsArr = typeof jobCard.workItems === 'string' ? JSON.parse(jobCard.workItems) : (jobCard.workItems || []);
+  } catch {
+    workItemsArr = [];
+  }
+
+  // If repair requests are empty but work items exist, populate from work items
+  if (repairRequestsArr.length === 0 && workItemsArr.length > 0) {
+    repairRequestsArr = workItemsArr
+      .filter((w: any) => w.description || w.serviceCode)
+      .map((w: any) => ({
+        regularRequest: w.serviceCode ? `[${w.serviceCode}] ${w.description}` : w.description,
+        specialRequest: w.itemType === 'PARTS' ? 'Parts Replacement' : 'Service Routine',
+        actionTaken: w.labourCharges || w.partsCharges ? `₹${(Number(w.labourCharges || 0) + Number(w.partsCharges || 0)) * (w.quantity || 1)}` : 'Inspected',
+      }));
+  }
+
   // Ensure at least 8 rows for the physical paper aesthetic
   const minRows = Math.max(8, repairRequestsArr.length);
   const displayRows = Array.from({ length: minRows }, (_, idx) => repairRequestsArr[idx] || { regularRequest: '', specialRequest: '', actionTaken: '' });
@@ -42,6 +60,49 @@ export default function JobCardPrintLayout({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex flex-col items-center justify-start overflow-y-auto overflow-x-hidden p-2 sm:p-6 print:p-0 print:bg-white print:static print:inset-auto print:overflow-visible">
+      {/* Print Isolation Styles - Guarantees ONLY the physical Job Card slip prints */}
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+            @media print {
+              @page {
+                size: A4 portrait;
+                margin: 5mm;
+              }
+              html, body {
+                background: white !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                overflow: visible !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+              }
+              body * {
+                visibility: hidden;
+              }
+              #job-card-print-slip,
+              #job-card-print-slip * {
+                visibility: visible;
+              }
+              #job-card-print-slip {
+                position: absolute !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                min-width: 0 !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                box-shadow: none !important;
+                border: none !important;
+                background: white !important;
+                z-index: 999999 !important;
+              }
+            }
+          `,
+        }}
+      />
+
       {/* Control Bar - Hidden when printing */}
       <div className="w-full max-w-[210mm] bg-white rounded-2xl p-3 sm:p-4 mb-3 shadow-xl border border-gm-line flex flex-wrap items-center justify-between gap-3 print:hidden shrink-0">
         <div className="flex items-center gap-2">
@@ -90,7 +151,7 @@ export default function JobCardPrintLayout({
       {/* Scrollable Sheet Wrapper on Small Screens */}
       <div className="w-full max-w-full overflow-x-auto overscroll-x-contain touch-pan-x pb-10 flex justify-start sm:justify-center print:overflow-visible print:p-0 print:m-0 print:w-full print:block no-scrollbar">
         {/* A4 Sheet Container */}
-        <div className="relative w-[780px] min-w-[780px] max-w-[210mm] min-h-[297mm] bg-white p-6 sm:p-8 shadow-2xl border border-slate-300 text-slate-900 print:shadow-none print:border-none print:p-0 print:m-0 print:w-full print:min-w-0 print:max-w-none text-[11px] leading-tight select-text shrink-0">
+        <div id="job-card-print-slip" className="relative w-[780px] min-w-[780px] max-w-[210mm] min-h-[297mm] bg-white p-6 sm:p-8 shadow-2xl border border-slate-300 text-slate-900 print:shadow-none print:border-none print:p-0 print:m-0 print:w-full print:min-w-0 print:max-w-none text-[11px] leading-tight select-text shrink-0">
           {/* Centered Subtle Watermark */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 overflow-hidden">
             <div className="opacity-[0.05] select-none flex flex-col items-center justify-center transform -rotate-12 scale-125">
