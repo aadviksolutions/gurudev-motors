@@ -45,6 +45,7 @@ interface RepairRequestRow {
 }
 
 interface WorkItemRow {
+  itemType?: 'SERVICE' | 'PARTS';
   description: string;
   quantity: number;
   labourCharges: number;
@@ -83,6 +84,7 @@ export default function AdminServicePage() {
   const [editDeliveryDate, setEditDeliveryDate] = useState('');
   const [editDeliveryTime, setEditDeliveryTime] = useState('');
   const [editDiscount, setEditDiscount] = useState('0');
+  const [editIsGstBill, setEditIsGstBill] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState('');
 
@@ -97,6 +99,12 @@ export default function AdminServicePage() {
   const [reminderSearch, setReminderSearch] = useState('');
   const [remindersLoading, setRemindersLoading] = useState(false);
 
+  // Serial Number Config State
+  const [nextSerialNum, setNextSerialNum] = useState('');
+  const [showSerialModal, setShowSerialModal] = useState(false);
+  const [inputStartSerial, setInputStartSerial] = useState('');
+  const [savingSerial, setSavingSerial] = useState(false);
+
   // FORM STATE: Physical Job Card Fields
   const [customJobCardNumber, setCustomJobCardNumber] = useState('');
   const [customerName, setCustomerName] = useState('');
@@ -105,6 +113,7 @@ export default function AdminServicePage() {
   const [customerEmail, setCustomerEmail] = useState('');
 
   // Vehicle Details
+  const [isNewVehicle, setIsNewVehicle] = useState(false);
   const [vehicleModel, setVehicleModel] = useState('');
   const [vehicleTypeKickSelf, setVehicleTypeKickSelf] = useState('Self');
   const [frameNumber, setFrameNumber] = useState('');
@@ -130,11 +139,12 @@ export default function AdminServicePage() {
     { regularRequest: 'General wash & polish', specialRequest: 'Battery voltage check', actionTaken: 'Battery terminals cleaned' },
   ]);
 
-  // Dynamic Work Items & Estimates Table
+  // Dynamic Work Items & Estimates Table (Billing with Service/Parts dropdown)
+  const [isGstBill, setIsGstBill] = useState(false); // Default is Non-GST bill
   const [workItems, setWorkItems] = useState<WorkItemRow[]>([
-    { description: 'Synthetic 10W-30 4T Engine Oil', quantity: 1, labourCharges: 150, partsCharges: 450, total: 600 },
-    { description: 'OEM Oil Filter Element', quantity: 1, labourCharges: 50, partsCharges: 120, total: 170 },
-    { description: 'General Periodic Maintenance Labour', quantity: 1, labourCharges: 350, partsCharges: 0, total: 350 },
+    { itemType: 'PARTS', description: 'Synthetic 10W-30 4T Engine Oil', quantity: 1, labourCharges: 0, partsCharges: 450, total: 450 },
+    { itemType: 'PARTS', description: 'OEM Oil Filter Element', quantity: 1, labourCharges: 0, partsCharges: 120, total: 120 },
+    { itemType: 'SERVICE', description: 'General Periodic Maintenance Labour', quantity: 1, labourCharges: 350, partsCharges: 0, total: 350 },
   ]);
 
   // Estimates & Delivery Details
@@ -167,7 +177,7 @@ export default function AdminServicePage() {
 
   const calculatedDiscount = Number(discount) || 0;
   const subTotalBeforeTax = Math.max(0, calculatedLabour + calculatedParts - calculatedDiscount);
-  const gstTax = Math.round(subTotalBeforeTax * 0.18);
+  const gstTax = isGstBill ? Math.round(subTotalBeforeTax * 0.18) : 0;
   const finalTotalAmount = subTotalBeforeTax + gstTax;
 
   // Auto-calculated totals for editing job card
@@ -181,7 +191,7 @@ export default function AdminServicePage() {
 
   const editCalculatedDiscount = Number(editDiscount) || 0;
   const editSubTotal = Math.max(0, editCalculatedLabour + editCalculatedParts - editCalculatedDiscount);
-  const editGst = Math.round(editSubTotal * 0.18);
+  const editGst = editIsGstBill ? Math.round(editSubTotal * 0.18) : 0;
   const editFinalTotal = editSubTotal + editGst;
 
   // Fetch initial data
@@ -258,12 +268,51 @@ export default function AdminServicePage() {
     }
   };
 
+  const fetchSerialConfig = async () => {
+    try {
+      const res = await fetch('/api/service-jobs/serial-config');
+      const data = await res.json();
+      if (data.success && data.nextSerialNumber) {
+        setNextSerialNum(data.nextSerialNumber);
+        setInputStartSerial(data.nextSerialNumber);
+      }
+    } catch (err) {
+      console.error('Fetch serial config error:', err);
+    }
+  };
+
+  const handleSaveSerialConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inputStartSerial || isNaN(Number(inputStartSerial))) return;
+    setSavingSerial(true);
+    try {
+      const res = await fetch('/api/service-jobs/serial-config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ startNumber: Number(inputStartSerial) }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setNextSerialNum(data.nextSerialNumber);
+        setShowSerialModal(false);
+        setSuccessBanner(`Job Card serial sequence reset! Next Job Card will start from #${data.nextSerialNumber}`);
+      } else {
+        alert(data.error || 'Failed to update serial sequence');
+      }
+    } catch (err: any) {
+      alert(err.message || 'Error updating serial sequence');
+    } finally {
+      setSavingSerial(false);
+    }
+  };
+
   useEffect(() => {
     fetchJobCards();
     fetchAppointments();
     fetchEmployees();
     fetchCustomers();
     fetchReminders();
+    fetchSerialConfig();
   }, []);
 
   useEffect(() => {
@@ -385,17 +434,26 @@ export default function AdminServicePage() {
   const addWorkItemRow = () => {
     setWorkItems([
       ...workItems,
-      { description: '', quantity: 1, labourCharges: 0, partsCharges: 0, total: 0 },
+      { itemType: 'PARTS', description: '', quantity: 1, labourCharges: 0, partsCharges: 0, total: 0 },
     ]);
   };
 
   const updateWorkItemRow = (idx: number, field: keyof WorkItemRow, val: any) => {
     const updated = [...workItems];
     (updated[idx] as any)[field] = val;
-    const qty = Number(updated[idx].quantity) || 1;
-    const lab = Number(updated[idx].labourCharges) || 0;
-    const parts = Number(updated[idx].partsCharges) || 0;
-    updated[idx].total = lab + (parts * qty);
+    const type = updated[idx].itemType || 'PARTS';
+    if (type === 'SERVICE') {
+      updated[idx].itemType = 'SERVICE';
+      updated[idx].quantity = 1;
+      updated[idx].partsCharges = 0;
+      updated[idx].total = Number(updated[idx].labourCharges) || 0;
+    } else {
+      updated[idx].itemType = 'PARTS';
+      updated[idx].labourCharges = 0;
+      const qty = Number(updated[idx].quantity) || 1;
+      const parts = Number(updated[idx].partsCharges) || 0;
+      updated[idx].total = parts * qty;
+    }
     setWorkItems(updated);
   };
 
@@ -414,7 +472,12 @@ export default function AdminServicePage() {
       parsedWork = [];
     }
     if (!Array.isArray(parsedWork) || parsedWork.length === 0) {
-      parsedWork = [{ description: 'General Periodic Maintenance Labour', quantity: 1, labourCharges: 350, partsCharges: 0, total: 350 }];
+      parsedWork = [{ itemType: 'SERVICE', description: 'General Periodic Maintenance Labour', quantity: 1, labourCharges: 350, partsCharges: 0, total: 350 }];
+    } else {
+      parsedWork = parsedWork.map((item) => ({
+        ...item,
+        itemType: item.itemType || (Number(item.partsCharges) > 0 ? 'PARTS' : 'SERVICE'),
+      }));
     }
 
     let parsedReqs: RepairRequestRow[] = [];
@@ -435,6 +498,7 @@ export default function AdminServicePage() {
     setEditDeliveryDate(jc.deliveryDate ? jc.deliveryDate.split('T')[0] : '');
     setEditDeliveryTime(jc.expectedDeliveryTime || '05:30 PM');
     setEditDiscount(String(jc.discount || 0));
+    setEditIsGstBill(Number(jc.tax) > 0);
     setEditError('');
     setEditModalOpen(true);
   };
@@ -457,17 +521,26 @@ export default function AdminServicePage() {
   const addEditWorkItemRow = () => {
     setEditWorkItems([
       ...editWorkItems,
-      { description: '', quantity: 1, labourCharges: 0, partsCharges: 0, total: 0 },
+      { itemType: 'PARTS', description: '', quantity: 1, labourCharges: 0, partsCharges: 0, total: 0 },
     ]);
   };
 
   const updateEditWorkItemRow = (idx: number, field: keyof WorkItemRow, val: any) => {
     const updated = [...editWorkItems];
     (updated[idx] as any)[field] = val;
-    const qty = Number(updated[idx].quantity) || 1;
-    const lab = Number(updated[idx].labourCharges) || 0;
-    const parts = Number(updated[idx].partsCharges) || 0;
-    updated[idx].total = lab + (parts * qty);
+    const type = updated[idx].itemType || 'PARTS';
+    if (type === 'SERVICE') {
+      updated[idx].itemType = 'SERVICE';
+      updated[idx].quantity = 1;
+      updated[idx].partsCharges = 0;
+      updated[idx].total = Number(updated[idx].labourCharges) || 0;
+    } else {
+      updated[idx].itemType = 'PARTS';
+      updated[idx].labourCharges = 0;
+      const qty = Number(updated[idx].quantity) || 1;
+      const parts = Number(updated[idx].partsCharges) || 0;
+      updated[idx].total = parts * qty;
+    }
     setEditWorkItems(updated);
   };
 
@@ -494,6 +567,7 @@ export default function AdminServicePage() {
           deliveryDate: editDeliveryDate || undefined,
           expectedDeliveryTime: editDeliveryTime.trim(),
           discount: Number(editDiscount) || 0,
+          isGstBill: editIsGstBill,
           workItems: editWorkItems.filter((w) => w.description || w.labourCharges || w.partsCharges),
           repairRequests: editRepairRequests.filter((r) => r.regularRequest || r.specialRequest || r.actionTaken),
         }),
@@ -522,8 +596,10 @@ export default function AdminServicePage() {
     e.preventDefault();
     setErrorMsg('');
 
-    if (!customerName.trim() || !customerMobile.trim() || !vehicleRegNumber.trim() || !vehicleModel.trim()) {
-      setErrorMsg('Please enter Customer Name, Mobile Number, Vehicle Registration and Model.');
+    const regToUse = isNewVehicle ? 'NEW VEHICLE' : vehicleRegNumber.trim().toUpperCase();
+
+    if (!customerName.trim() || !customerMobile.trim() || (!isNewVehicle && !vehicleRegNumber.trim()) || !vehicleModel.trim()) {
+      setErrorMsg('Please enter Customer Name, Mobile Number, Vehicle Model, and Registration (or select New Vehicle).');
       return;
     }
 
@@ -535,7 +611,9 @@ export default function AdminServicePage() {
         customerMobile: customerMobile.trim(),
         customerAddress: customerAddress.trim(),
         customerEmail: customerEmail.trim(),
-        vehicleRegNumber: vehicleRegNumber.toUpperCase().trim(),
+        vehicleRegNumber: regToUse,
+        isNewVehicle,
+        isGstBill,
         vehicleModel: vehicleModel.trim(),
         vehicleTypeKickSelf,
         frameNumber: frameNumber.trim(),
@@ -581,6 +659,7 @@ export default function AdminServicePage() {
 
       setSuccessBanner(`Job Card #${data.jobCard.jobCardNumber} created successfully!`);
       fetchJobCards();
+      fetchSerialConfig();
       setActiveTab('JOBS');
       setSelectedJc(data.jobCard);
 
@@ -592,6 +671,8 @@ export default function AdminServicePage() {
       setCustomerAddress('');
       setCustomerEmail('');
       setVehicleRegNumber('');
+      setIsNewVehicle(false);
+      setIsGstBill(false);
       setVehicleModel('');
       setFrameNumber('');
       setEngineNumber('');
@@ -734,12 +815,22 @@ New Raipura, Raipur (C.G.)`;
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => setShowSerialModal(true)}
+              className="bg-white border border-gm-line hover:border-gm-navy text-gm-navy text-xs font-bold px-3 py-2.5 rounded-xl transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
+              title="Reset or configure starting sequence for Job Cards"
+            >
+              <Settings className="w-3.5 h-3.5 text-gm-red" />
+              <span>Reset Serial No. {nextSerialNum ? `(#${nextSerialNum})` : ''}</span>
+            </button>
+
             <button
               onClick={() => {
                 if (activeTab === 'APPOINTMENTS') fetchAppointments();
                 else if (activeTab === 'REMINDERS') fetchReminders();
                 else fetchJobCards();
+                fetchSerialConfig();
               }}
               disabled={refreshing || remindersLoading}
               className="bg-white border border-gm-line hover:border-gm-navy text-gm-navy text-xs font-bold px-3 py-2.5 rounded-xl transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
@@ -753,7 +844,7 @@ New Raipura, Raipur (C.G.)`;
                 setErrorMsg('');
                 setActiveTab('CREATE');
               }}
-              className="bg-gm-red hover:bg-gm-red-dark text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
+              className="bg-gm-red hover:bg-gm-red-dark text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>Create Job Card</span>
@@ -1026,15 +1117,15 @@ New Raipura, Raipur (C.G.)`;
                       <span>Job Card Number (Manual Stamp / Optional)</span>
                     </label>
                     <span className="text-[10px] text-amber-800">
-                      Physical slip number (e.g. <b className="font-mono text-red-600">0816</b>). Leave blank to auto-generate.
+                      Auto Serial: <b className="font-mono text-red-600 font-black">#{nextSerialNum || 'Auto'}</b>. Leave blank to use auto-sequence or enter manual number.
                     </span>
                   </div>
                   <input
                     type="text"
-                    placeholder="e.g. 0816 (Optional)"
+                    placeholder={nextSerialNum ? `e.g. #${nextSerialNum} (Default)` : 'Auto-generated'}
                     value={customJobCardNumber}
                     onChange={(e) => setCustomJobCardNumber(e.target.value)}
-                    className="w-full sm:w-44 px-3 py-1.5 rounded-xl border border-amber-300 font-mono font-black text-xs text-red-600 bg-white uppercase placeholder:text-slate-400 placeholder:normal-case shadow-xs"
+                    className="w-full sm:w-48 px-3 py-1.5 rounded-xl border border-amber-300 font-mono font-black text-xs text-red-600 bg-white uppercase placeholder:text-slate-400 placeholder:normal-case shadow-xs"
                   />
                 </div>
               </div>
@@ -1186,14 +1277,38 @@ New Raipura, Raipur (C.G.)`;
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-bold text-gm-navy mb-1">Registration No. *</label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-[11px] font-bold text-gm-navy">Registration No. *</label>
+                        <label className="flex items-center gap-1.5 cursor-pointer text-[10px] font-bold text-amber-900 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-300 shadow-2xs hover:bg-amber-100 transition-colors">
+                          <input
+                            type="checkbox"
+                            checked={isNewVehicle}
+                            onChange={(e) => {
+                              const checked = e.target.checked;
+                              setIsNewVehicle(checked);
+                              if (checked) {
+                                setVehicleRegNumber('NEW VEHICLE');
+                              } else if (vehicleRegNumber === 'NEW VEHICLE') {
+                                setVehicleRegNumber('');
+                              }
+                            }}
+                            className="accent-gm-navy w-3.5 h-3.5 cursor-pointer"
+                          />
+                          <span>New Vehicle (No Number)</span>
+                        </label>
+                      </div>
                       <input
                         type="text"
-                        required
-                        placeholder="e.g. CG 04 AB 1234"
+                        required={!isNewVehicle}
+                        disabled={isNewVehicle}
+                        placeholder={isNewVehicle ? 'NEW VEHICLE (No number required)' : 'e.g. CG 04 AB 1234'}
                         value={vehicleRegNumber}
                         onChange={(e) => setVehicleRegNumber(e.target.value.toUpperCase())}
-                        className="w-full px-3 py-2 rounded-xl border border-gm-line text-xs font-mono font-black text-red-600 bg-white uppercase"
+                        className={`w-full px-3 py-2 rounded-xl border text-xs font-mono font-black uppercase transition-colors ${
+                          isNewVehicle
+                            ? 'bg-amber-50/80 border-amber-300 text-amber-800'
+                            : 'border-gm-line text-red-600 bg-white'
+                        }`}
                       />
                     </div>
                   </div>
@@ -1428,85 +1543,147 @@ New Raipura, Raipur (C.G.)`;
 
             {/* Card 4: Work Items & Estimate Calculation */}
             <div className="bg-white rounded-2xl p-5 border border-gm-line shadow-xs space-y-4">
-              <div className="flex items-center justify-between border-b border-gm-line pb-2">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gm-line pb-2">
                 <div>
                   <h3 className="text-xs font-black text-gm-navy uppercase tracking-wider">
                     Work Items, Parts &amp; Estimate Calculation
                   </h3>
-                  <p className="text-[11px] text-gm-muted">Add parts, fluids and labour charges. System calculates totals automatically.</p>
+                  <p className="text-[11px] text-gm-muted">Select Service (Labour) or Parts. Service hides quantity; Parts enables quantity.</p>
                 </div>
 
                 <button
                   type="button"
                   onClick={addWorkItemRow}
-                  className="bg-gm-navy text-white text-xs font-bold px-3 py-1.5 rounded-xl hover:bg-gm-navy/90 transition-colors flex items-center gap-1"
+                  className="bg-gm-navy text-white text-xs font-bold px-3 py-1.5 rounded-xl hover:bg-gm-navy/90 transition-colors flex items-center gap-1 cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>Add Item</span>
                 </button>
               </div>
 
+              {/* Bill Type Selector: Default Non-GST Bill, optional GST Bill */}
+              <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-gm-soft/80 rounded-xl border border-gm-line">
+                <div className="flex items-center gap-4 flex-wrap">
+                  <span className="text-xs font-black text-gm-navy uppercase tracking-wider">Billing Type:</span>
+                  <label className="flex items-center gap-1.5 cursor-pointer text-xs font-bold text-gm-navy">
+                    <input
+                      type="radio"
+                      name="createBillType"
+                      value="NON_GST"
+                      checked={!isGstBill}
+                      onChange={() => setIsGstBill(false)}
+                      className="accent-gm-navy w-4 h-4"
+                    />
+                    <span>Non-GST Bill (Default)</span>
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer text-xs font-bold text-gm-navy">
+                    <input
+                      type="radio"
+                      name="createBillType"
+                      value="GST"
+                      checked={isGstBill}
+                      onChange={() => setIsGstBill(true)}
+                      className="accent-gm-navy w-4 h-4"
+                    />
+                    <span>GST Bill (18% GST)</span>
+                  </label>
+                </div>
+                {isGstBill ? (
+                  <span className="px-2.5 py-1 rounded-lg text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
+                    CGST 9% + SGST 9% (Total 18%)
+                  </span>
+                ) : (
+                  <span className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-200 text-slate-700">
+                    Zero GST / Retail Slip
+                  </span>
+                )}
+              </div>
+
               <div className="space-y-2">
                 <div className="grid grid-cols-12 gap-2 text-[10px] font-black uppercase text-gm-navy bg-gm-soft p-2 rounded-xl">
-                  <div className="col-span-5">Work / Part Description</div>
-                  <div className="col-span-2">Qty</div>
-                  <div className="col-span-2">Labour (₹)</div>
-                  <div className="col-span-2">Parts Cost (₹)</div>
+                  <div className="col-span-2">Type</div>
+                  <div className="col-span-4">Work / Part Description</div>
+                  <div className="col-span-2 text-center">Qty</div>
+                  <div className="col-span-3 text-right">Rate / Charge (₹)</div>
                   <div className="col-span-1 text-center">Del</div>
                 </div>
 
-                {workItems.map((item, idx) => (
-                  <div key={idx} className="grid grid-cols-12 gap-2 items-center bg-white p-1 rounded-xl">
-                    <div className="col-span-5">
-                      <input
-                        type="text"
-                        placeholder="Item or job description"
-                        value={item.description}
-                        onChange={(e) => updateWorkItemRow(idx, 'description', e.target.value)}
-                        className="w-full px-2.5 py-1.5 rounded-lg border border-gm-line text-xs font-medium"
-                      />
+                {workItems.map((item, idx) => {
+                  const isService = item.itemType === 'SERVICE';
+                  return (
+                    <div key={idx} className="grid grid-cols-12 gap-2 items-center bg-white p-1 rounded-xl">
+                      {/* Type Dropdown */}
+                      <div className="col-span-2">
+                        <select
+                          value={item.itemType || 'PARTS'}
+                          onChange={(e) => updateWorkItemRow(idx, 'itemType', e.target.value as any)}
+                          className="w-full px-2 py-1.5 rounded-lg border border-gm-line text-xs font-bold bg-white focus:outline-none"
+                        >
+                          <option value="PARTS">Parts</option>
+                          <option value="SERVICE">Service</option>
+                        </select>
+                      </div>
+
+                      {/* Description */}
+                      <div className="col-span-4">
+                        <input
+                          type="text"
+                          placeholder={isService ? 'Service / Labour description...' : 'Part / Spare name...'}
+                          value={item.description}
+                          onChange={(e) => updateWorkItemRow(idx, 'description', e.target.value)}
+                          className="w-full px-2.5 py-1.5 rounded-lg border border-gm-line text-xs font-medium"
+                        />
+                      </div>
+
+                      {/* Quantity: Hidden when Service (fixed to 1), Shown when Parts */}
+                      <div className="col-span-2 text-center">
+                        {isService ? (
+                          <span className="text-[11px] font-bold text-gm-muted block py-1.5 bg-gm-soft/50 rounded-lg">
+                            — (1 Job)
+                          </span>
+                        ) : (
+                          <input
+                            type="number"
+                            min="1"
+                            value={item.quantity}
+                            onChange={(e) => updateWorkItemRow(idx, 'quantity', Number(e.target.value))}
+                            className="w-full px-2.5 py-1.5 rounded-lg border border-gm-line text-xs font-mono font-bold text-center"
+                          />
+                        )}
+                      </div>
+
+                      {/* Rate / Charge */}
+                      <div className="col-span-3">
+                        <input
+                          type="number"
+                          min="0"
+                          placeholder={isService ? 'Labour Rate (₹)' : 'Part Unit Price (₹)'}
+                          value={isService ? item.labourCharges : item.partsCharges}
+                          onChange={(e) => {
+                            if (isService) {
+                              updateWorkItemRow(idx, 'labourCharges', Number(e.target.value));
+                            } else {
+                              updateWorkItemRow(idx, 'partsCharges', Number(e.target.value));
+                            }
+                          }}
+                          className="w-full px-2.5 py-1.5 rounded-lg border border-gm-line text-xs font-mono font-bold text-right"
+                        />
+                      </div>
+
+                      {/* Delete */}
+                      <div className="col-span-1 text-center">
+                        <button
+                          type="button"
+                          onClick={() => removeWorkItemRow(idx)}
+                          disabled={workItems.length <= 1}
+                          className="text-red-500 hover:text-red-700 p-1 rounded disabled:opacity-30 cursor-pointer"
+                        >
+                          <Trash2 className="w-4 h-4 mx-auto" />
+                        </button>
+                      </div>
                     </div>
-                    <div className="col-span-2">
-                      <input
-                        type="number"
-                        min="1"
-                        value={item.quantity}
-                        onChange={(e) => updateWorkItemRow(idx, 'quantity', Number(e.target.value))}
-                        className="w-full px-2.5 py-1.5 rounded-lg border border-gm-line text-xs font-mono text-center"
-                      />
-                    </div>
-                    <div className="col-span-2">
-                      <input
-                        type="number"
-                        min="0"
-                        placeholder="Labour"
-                        value={item.labourCharges}
-                        onChange={(e) => updateWorkItemRow(idx, 'labourCharges', Number(e.target.value))}
-                        className="w-full px-2.5 py-1.5 rounded-lg border border-gm-line text-xs font-mono"
-                      />
-                    </div>
-                    <div className="col-span-2">
-                      <input
-                        type="number"
-                        min="0"
-                        placeholder="Parts"
-                        value={item.partsCharges}
-                        onChange={(e) => updateWorkItemRow(idx, 'partsCharges', Number(e.target.value))}
-                        className="w-full px-2.5 py-1.5 rounded-lg border border-gm-line text-xs font-mono"
-                      />
-                    </div>
-                    <div className="col-span-1 text-center">
-                      <button
-                        type="button"
-                        onClick={() => removeWorkItemRow(idx)}
-                        disabled={workItems.length <= 1}
-                        className="text-red-500 hover:text-red-700 p-1 rounded disabled:opacity-30"
-                      >
-                        <Trash2 className="w-4 h-4 mx-auto" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* Estimate Calculations Summary */}
@@ -1526,12 +1703,17 @@ New Raipura, Raipur (C.G.)`;
                     min="0"
                     value={discount}
                     onChange={(e) => setDiscount(e.target.value)}
-                    className="w-20 px-2 py-0.5 rounded border border-gm-line text-xs font-mono bg-white"
+                    className="w-20 px-2 py-0.5 rounded border border-gm-line text-xs font-mono bg-white font-bold"
                   />
                 </div>
                 <div>
-                  <span className="text-gm-muted text-[10px] uppercase font-bold block">GST (18%):</span>
-                  <b className="font-mono text-sm text-gm-muted">₹{gstTax}</b>
+                  <span className="text-gm-muted text-[10px] uppercase font-bold block">
+                    {isGstBill ? 'GST (18%):' : 'Tax / GST:'}
+                  </span>
+                  <b className={`font-mono text-sm ${isGstBill ? 'text-gm-navy font-bold' : 'text-emerald-600'}`}>
+                    {isGstBill ? `₹${gstTax}` : '₹0 (Non-GST)'}
+                  </b>
+                  {isGstBill && <span className="text-[9px] text-gm-muted block">CGST 9% + SGST 9%</span>}
                 </div>
                 <div>
                   <span className="text-gm-red text-[10px] uppercase font-black block">Estimated Final Total:</span>
@@ -2232,73 +2414,128 @@ New Raipura, Raipur (C.G.)`;
                     </button>
                   </div>
 
+                  {/* Edit Bill Type Selector */}
+                  <div className="flex flex-wrap items-center justify-between gap-3 p-2.5 bg-gm-soft/80 rounded-xl border border-gm-line">
+                    <div className="flex items-center gap-4 flex-wrap">
+                      <span className="text-xs font-black text-gm-navy uppercase tracking-wider">Billing Type:</span>
+                      <label className="flex items-center gap-1.5 cursor-pointer text-xs font-bold text-gm-navy">
+                        <input
+                          type="radio"
+                          name="editBillTypeRadio"
+                          value="NON_GST"
+                          checked={!editIsGstBill}
+                          onChange={() => setEditIsGstBill(false)}
+                          className="accent-gm-navy w-4 h-4"
+                        />
+                        <span>Non-GST Bill (Default)</span>
+                      </label>
+                      <label className="flex items-center gap-1.5 cursor-pointer text-xs font-bold text-gm-navy">
+                        <input
+                          type="radio"
+                          name="editBillTypeRadio"
+                          value="GST"
+                          checked={editIsGstBill}
+                          onChange={() => setEditIsGstBill(true)}
+                          className="accent-gm-navy w-4 h-4"
+                        />
+                        <span>GST Bill (18% GST)</span>
+                      </label>
+                    </div>
+                    {editIsGstBill ? (
+                      <span className="px-2 py-0.5 rounded-lg text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
+                        CGST 9% + SGST 9% (18%)
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-slate-200 text-slate-700">
+                        Zero GST / Retail Slip
+                      </span>
+                    )}
+                  </div>
+
                   <div className="border border-gm-line rounded-xl overflow-hidden">
                     <table className="w-full text-left text-xs">
                       <thead className="bg-gm-soft/80 text-gm-muted uppercase text-[10px] font-bold">
                         <tr>
+                          <th className="p-2.5 w-24">Type</th>
                           <th className="p-2.5">Work / Part Description</th>
-                          <th className="p-2.5 w-16 text-center">Qty</th>
-                          <th className="p-2.5 w-24 text-right">Labour (₹)</th>
-                          <th className="p-2.5 w-24 text-right">Parts (₹)</th>
+                          <th className="p-2.5 w-20 text-center">Qty</th>
+                          <th className="p-2.5 w-32 text-right">Rate / Charge (₹)</th>
                           <th className="p-2.5 w-24 text-right">Total (₹)</th>
                           <th className="p-2.5 w-10 text-center"></th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gm-line/60">
-                        {editWorkItems.map((item, idx) => (
-                          <tr key={idx} className="hover:bg-gm-soft/30">
-                            <td className="p-2">
-                              <input
-                                type="text"
-                                value={item.description}
-                                onChange={(e) => updateEditWorkItemRow(idx, 'description', e.target.value)}
-                                placeholder="Description of service or part..."
-                                className="w-full px-2 py-1.5 rounded-lg border border-gm-line text-xs font-medium focus:outline-none focus:border-gm-navy"
-                              />
-                            </td>
-                            <td className="p-2">
-                              <input
-                                type="number"
-                                min={1}
-                                value={item.quantity}
-                                onChange={(e) => updateEditWorkItemRow(idx, 'quantity', e.target.value)}
-                                className="w-full px-1.5 py-1.5 rounded-lg border border-gm-line text-xs font-bold text-center focus:outline-none focus:border-gm-navy"
-                              />
-                            </td>
-                            <td className="p-2">
-                              <input
-                                type="number"
-                                min={0}
-                                value={item.labourCharges}
-                                onChange={(e) => updateEditWorkItemRow(idx, 'labourCharges', e.target.value)}
-                                className="w-full px-2 py-1.5 rounded-lg border border-gm-line text-xs font-mono font-bold text-right focus:outline-none focus:border-gm-navy"
-                              />
-                            </td>
-                            <td className="p-2">
-                              <input
-                                type="number"
-                                min={0}
-                                value={item.partsCharges}
-                                onChange={(e) => updateEditWorkItemRow(idx, 'partsCharges', e.target.value)}
-                                className="w-full px-2 py-1.5 rounded-lg border border-gm-line text-xs font-mono font-bold text-right focus:outline-none focus:border-gm-navy"
-                              />
-                            </td>
-                            <td className="p-2 text-right font-mono font-black text-gm-navy text-xs">
-                              ₹{item.total || 0}
-                            </td>
-                            <td className="p-2 text-center">
-                              {editWorkItems.length > 1 && (
-                                <button
-                                  type="button"
-                                  onClick={() => removeEditWorkItemRow(idx)}
-                                  className="text-red-500 hover:text-red-700 p-1"
+                        {editWorkItems.map((item, idx) => {
+                          const isService = item.itemType === 'SERVICE';
+                          return (
+                            <tr key={idx} className="hover:bg-gm-soft/30">
+                              <td className="p-2">
+                                <select
+                                  value={item.itemType || 'PARTS'}
+                                  onChange={(e) => updateEditWorkItemRow(idx, 'itemType', e.target.value as any)}
+                                  className="w-full px-2 py-1.5 rounded-lg border border-gm-line text-xs font-bold bg-white focus:outline-none"
                                 >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
+                                  <option value="PARTS">Parts</option>
+                                  <option value="SERVICE">Service</option>
+                                </select>
+                              </td>
+                              <td className="p-2">
+                                <input
+                                  type="text"
+                                  value={item.description}
+                                  onChange={(e) => updateEditWorkItemRow(idx, 'description', e.target.value)}
+                                  placeholder={isService ? 'Service / Labour description...' : 'Part / Spare name...'}
+                                  className="w-full px-2 py-1.5 rounded-lg border border-gm-line text-xs font-medium focus:outline-none focus:border-gm-navy"
+                                />
+                              </td>
+                              <td className="p-2 text-center">
+                                {isService ? (
+                                  <span className="text-[11px] font-bold text-gm-muted block py-1 bg-gm-soft/50 rounded-lg">
+                                    — (1 Job)
+                                  </span>
+                                ) : (
+                                  <input
+                                    type="number"
+                                    min={1}
+                                    value={item.quantity}
+                                    onChange={(e) => updateEditWorkItemRow(idx, 'quantity', Number(e.target.value))}
+                                    className="w-full px-1.5 py-1.5 rounded-lg border border-gm-line text-xs font-bold text-center focus:outline-none focus:border-gm-navy"
+                                  />
+                                )}
+                              </td>
+                              <td className="p-2">
+                                <input
+                                  type="number"
+                                  min={0}
+                                  value={isService ? item.labourCharges : item.partsCharges}
+                                  onChange={(e) => {
+                                    if (isService) {
+                                      updateEditWorkItemRow(idx, 'labourCharges', Number(e.target.value));
+                                    } else {
+                                      updateEditWorkItemRow(idx, 'partsCharges', Number(e.target.value));
+                                    }
+                                  }}
+                                  placeholder={isService ? 'Labour Rate' : 'Part Price'}
+                                  className="w-full px-2 py-1.5 rounded-lg border border-gm-line text-xs font-mono font-bold text-right focus:outline-none focus:border-gm-navy"
+                                />
+                              </td>
+                              <td className="p-2 text-right font-mono font-black text-gm-navy text-xs">
+                                ₹{item.total || 0}
+                              </td>
+                              <td className="p-2 text-center">
+                                {editWorkItems.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => removeEditWorkItemRow(idx)}
+                                    className="text-red-500 hover:text-red-700 p-1 cursor-pointer"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -2321,7 +2558,13 @@ New Raipura, Raipur (C.G.)`;
                         />
                       </div>
                       <span>•</span>
-                      <span>GST (18%): <strong className="font-mono text-slate-900">₹{editGst}</strong></span>
+                      <span>
+                        {editIsGstBill ? (
+                          <>GST (18%): <strong className="font-mono text-slate-900">₹{editGst}</strong></>
+                        ) : (
+                          <>Tax: <strong className="font-mono text-emerald-700">₹0 (Non-GST)</strong></>
+                        )}
+                      </span>
                     </div>
 
                     <div className="text-right">
@@ -2426,6 +2669,76 @@ New Raipura, Raipur (C.G.)`;
                   >
                     <CheckCircle2 className="w-4 h-4" />
                     <span>{editSaving ? 'Updating Job Card...' : 'Save Updated Work & Estimate'}</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Reset / Set Serial Number Configuration Modal */}
+        {showSerialModal && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gm-line space-y-4">
+              <div className="flex items-center justify-between border-b border-gm-line pb-3">
+                <div className="flex items-center gap-2">
+                  <Settings className="w-5 h-5 text-gm-red" />
+                  <h3 className="text-sm font-black text-gm-navy uppercase tracking-wider">
+                    Job Card Serial Configuration
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowSerialModal(false)}
+                  className="p-1 rounded-lg text-gm-muted hover:text-gm-navy hover:bg-gm-soft"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <p className="text-xs text-gm-muted leading-relaxed">
+                Set or reset the sequential Job Card numbering. All new Job Cards created will start sequentially from the starting number entered below.
+              </p>
+
+              <form onSubmit={handleSaveSerialConfig} className="space-y-4">
+                <div className="p-3 bg-gm-soft rounded-xl border border-gm-line">
+                  <span className="text-[10px] font-bold text-gm-muted uppercase block">Current Next Serial Number:</span>
+                  <b className="text-xl font-mono font-black text-gm-navy">#{nextSerialNum || '0820'}</b>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gm-navy mb-1">
+                    Enter New Starting Serial Number *
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    required
+                    placeholder="e.g. 1001 or 0850"
+                    value={inputStartSerial}
+                    onChange={(e) => setInputStartSerial(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-gm-line text-sm font-mono font-bold focus:outline-none focus:border-gm-navy"
+                  />
+                  <span className="text-[10px] text-gm-muted mt-1 block">
+                    Example: Enter 1001 to begin new job cards from #1001.
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-gm-line">
+                  <button
+                    type="button"
+                    onClick={() => setShowSerialModal(false)}
+                    className="px-4 py-2 rounded-xl border border-gm-line text-xs font-bold text-gm-navy hover:bg-gm-soft transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={savingSerial}
+                    className="px-4 py-2 rounded-xl bg-gm-navy hover:bg-gm-navy-dark text-white text-xs font-bold transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
+                  >
+                    {savingSerial && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
+                    <span>Save &amp; Set Serial Sequence</span>
                   </button>
                 </div>
               </form>

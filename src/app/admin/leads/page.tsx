@@ -331,7 +331,7 @@ export default function AdminLeadsPage() {
             />
           </form>
 
-          <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-1 md:pb-0 no-scrollbar">
+          <div className="flex items-center gap-1.5 overflow-x-auto overscroll-x-contain touch-pan-x w-full md:w-auto pb-1 md:pb-0 no-scrollbar">
             {statusOptions.map((st) => (
               <button
                 key={st}

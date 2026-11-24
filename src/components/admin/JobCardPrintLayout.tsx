@@ -88,7 +88,7 @@ export default function JobCardPrintLayout({
       </div>
 
       {/* Scrollable Sheet Wrapper on Small Screens */}
-      <div className="w-full max-w-full overflow-x-auto pb-10 flex justify-start sm:justify-center print:overflow-visible print:p-0 print:m-0 print:w-full print:block no-scrollbar">
+      <div className="w-full max-w-full overflow-x-auto overscroll-x-contain touch-pan-x pb-10 flex justify-start sm:justify-center print:overflow-visible print:p-0 print:m-0 print:w-full print:block no-scrollbar">
         {/* A4 Sheet Container */}
         <div className="relative w-[780px] min-w-[780px] max-w-[210mm] min-h-[297mm] bg-white p-6 sm:p-8 shadow-2xl border border-slate-300 text-slate-900 print:shadow-none print:border-none print:p-0 print:m-0 print:w-full print:min-w-0 print:max-w-none text-[11px] leading-tight select-text shrink-0">
           {/* Centered Subtle Watermark */}
@@ -108,7 +108,7 @@ export default function JobCardPrintLayout({
           {/* Outer Border wrapping the Job Card */}
           <div className="relative z-10 border-2 border-black flex flex-col">
             {/* HEADER */}
-            <div className="border-b-2 border-black p-3 text-center relative bg-white min-h-[72px] flex items-center justify-between">
+            <div className="border-b-2 border-black p-2.5 text-center relative bg-white min-h-[76px] flex items-center justify-between gap-3">
               {/* Red Stamped Job Card Number */}
               <div className="text-left shrink-0 z-10 w-28">
                 <span className="text-[9px] font-black uppercase text-slate-600 block leading-tight">JOB CARD NO.</span>
@@ -118,21 +118,28 @@ export default function JobCardPrintLayout({
               </div>
 
               {/* Central Dealership Title */}
-              <div className="flex-1 px-4 text-center">
+              <div className="flex-1 px-2 text-center">
                 <h1 className="text-xl font-black text-black tracking-wide uppercase">
                   GURUDEV MOTORS
                 </h1>
-                <p className="text-[10px] font-bold text-slate-800 uppercase mt-0.5">
+                <p className="text-[10px] font-bold text-slate-800 uppercase mt-0.5 leading-tight">
                   NEW RAIPURA HOSPITAL KE SAMNE, GANESH MANDIR KE SAMNE GALI, RAIPURA, RAIPUR (C.G.) Mo. 7000619808
                 </p>
               </div>
 
-              {/* Out date/time top right */}
-              <div className="text-right border border-black px-2 py-1 text-[9px] font-semibold bg-white shrink-0 z-10">
-                <span>out date/time: </span>
-                <b className="underline font-mono">
-                  {jobCard.deliveryDate ? formatDate(jobCard.deliveryDate) : '____/____/____'} {jobCard.expectedDeliveryTime || ''}
-                </b>
+              {/* Top Right: Out date/time box & Gurudev Motors Logo */}
+              <div className="flex items-center justify-end gap-2 shrink-0 z-10">
+                <div className="text-right border border-black px-2 py-1 text-[9px] font-semibold bg-white leading-tight">
+                  <span className="block text-[8px] text-slate-600 uppercase">out date/time:</span>
+                  <b className="underline font-mono text-[9px] block">
+                    {jobCard.deliveryDate ? formatDate(jobCard.deliveryDate) : '____/____/____'} {jobCard.expectedDeliveryTime || ''}
+                  </b>
+                </div>
+                <img
+                  src="/images/logo.jpeg"
+                  alt="Gurudev Motors"
+                  className="w-12 h-12 object-contain rounded border border-black p-0.5 bg-white shrink-0"
+                />
               </div>
             </div>
 
@@ -388,6 +395,12 @@ export default function JobCardPrintLayout({
                   <span className="font-bold text-slate-700">Estimated Cost Rs.:</span>
                   <b className="text-sm font-black text-black font-mono">₹{jobCard.finalTotal || jobCard.estimateAmount}</b>
                 </div>
+                <div className="text-[8.5px] text-slate-600 flex justify-between leading-tight">
+                  <span>Labour: ₹{jobCard.labourTotal || 0} | Parts: ₹{jobCard.partsTotal || 0}</span>
+                  <span className="font-bold text-slate-900">
+                    {Number(jobCard.tax) > 0 ? `GST (18%): ₹${jobCard.tax}` : 'Non-GST Bill'}
+                  </span>
+                </div>
                 <div className="text-[9px] flex items-center gap-2 pt-0.5">
                   <span className="font-bold text-slate-600">Payment:</span>
                   <span>Cash [✓]</span>
@@ -399,7 +412,7 @@ export default function JobCardPrintLayout({
                   <div>Invoice No.: <b>{jobCard.invoiceNumber || '-'}</b></div>
                   <div>GATE PASS NO.: <b>{jobCard.gatePassNumber || `GP-${jobCard.jobCardNumber}`}</b></div>
                 </div>
-                <div className="text-right text-[8.5px] text-slate-600 pt-1">
+                <div className="text-right text-[8.5px] text-slate-600 pt-0.5">
                   Cashiers Signature: __________________
                 </div>
               </div>
@@ -459,6 +472,9 @@ export default function JobCardPrintLayout({
                 <div>
                   <span className="text-slate-600 block text-[8.5px]">Estimated Cost:</span>
                   <b className="text-sm font-black text-black font-mono">₹{jobCard.finalTotal || jobCard.estimateAmount}</b>
+                  <span className="block text-[8px] text-slate-500 font-bold">
+                    {Number(jobCard.tax) > 0 ? '(Incl. 18% GST)' : '(Non-GST Bill)'}
+                  </span>
                 </div>
                 <div>
                   <span className="text-slate-600 block text-[8.5px]">Service Advisor:</span>

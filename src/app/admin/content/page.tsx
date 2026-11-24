@@ -120,7 +120,7 @@ export default function AdminContentPage() {
         </div>
 
         {/* Section selection tabs */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-2">
+        <div className="flex items-center gap-2 overflow-x-auto overscroll-x-contain touch-pan-x pb-2 no-scrollbar">
           {cmsKeys.map((item) => (
             <button
               key={item.key}

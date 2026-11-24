@@ -459,7 +459,7 @@ export default function AdminReportsPage() {
         </div>
 
         {/* Report Tab Navigation */}
-        <div className="flex items-center gap-2 border-b border-gm-line overflow-x-auto pb-2 no-scrollbar print:hidden">
+        <div className="flex items-center gap-2 border-b border-gm-line overflow-x-auto overscroll-x-contain touch-pan-x w-full max-w-full pb-2 no-scrollbar print:hidden">
           {[
             { id: 'overview', label: 'Executive Overview', icon: TrendingUp },
             { id: 'leads', label: 'CRM Leads & Pipeline', icon: Users },

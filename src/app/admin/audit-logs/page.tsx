@@ -41,7 +41,7 @@ export default function AdminAuditLogsPage() {
         </div>
 
         {/* Filter Bar */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-2">
+        <div className="flex items-center gap-2 overflow-x-auto overscroll-x-contain touch-pan-x pb-2 no-scrollbar">
           {modules.map((m) => (
             <button
               key={m}

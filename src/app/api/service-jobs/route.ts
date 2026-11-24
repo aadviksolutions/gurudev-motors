@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSessionUser, hasPermission, getRoleScope } from '@/lib/auth';
 import { logAudit } from '@/lib/audit';
+import { getNextJobCardSerial } from '@/lib/service-serial';
 
 export const dynamic = 'force-dynamic';
 
@@ -126,30 +127,35 @@ export async function POST(req: NextRequest) {
       vehicleId,
     } = body;
 
-    if (!customerName || !customerMobile || !vehicleRegNumber || !vehicleModel) {
+    const isNew = Boolean(body.isNewVehicle) || ['NEW VEHICLE', 'NEW', 'APPLIED FOR'].includes((vehicleRegNumber || '').toUpperCase().trim());
+    const regNo = isNew ? 'NEW VEHICLE' : (vehicleRegNumber || '').toUpperCase().trim();
+
+    if (!customerName || !customerMobile || (!isNew && !vehicleRegNumber) || !vehicleModel) {
       return NextResponse.json(
-        { error: 'Customer name, mobile number, vehicle registration number, and vehicle model are required.' },
+        { error: 'Customer name, mobile number, vehicle registration number (or select New Vehicle), and vehicle model are required.' },
         { status: 400 }
       );
     }
 
     const cleanMobile = customerMobile.replace(/[^0-9]/g, '');
 
-    // Prevent duplicate active job card for the same vehicle
-    const activeExisting = await prisma.serviceJobCard.findFirst({
-      where: {
-        vehicleRegNumber: vehicleRegNumber.toUpperCase().trim(),
-        status: { notIn: ['DELIVERED', 'CANCELLED'] },
-      },
-    });
-
-    if (activeExisting) {
-      return NextResponse.json(
-        {
-          error: `Vehicle ${vehicleRegNumber.toUpperCase()} already has an active Job Card (${activeExisting.jobCardNumber}) in status "${activeExisting.status}".`,
+    // Prevent duplicate active job card for the same vehicle (except for unregistered New Vehicles)
+    if (!isNew && regNo !== 'NEW VEHICLE') {
+      const activeExisting = await prisma.serviceJobCard.findFirst({
+        where: {
+          vehicleRegNumber: regNo,
+          status: { notIn: ['DELIVERED', 'CANCELLED'] },
         },
-        { status: 409 }
-      );
+      });
+
+      if (activeExisting) {
+        return NextResponse.json(
+          {
+            error: `Vehicle ${regNo} already has an active Job Card (${activeExisting.jobCardNumber}) in status "${activeExisting.status}".`,
+          },
+          { status: 409 }
+        );
+      }
     }
 
     // Lookup or create customer
@@ -166,7 +172,7 @@ export async function POST(req: NextRequest) {
           email: customerEmail?.trim() || null,
           address: customerAddress?.trim() || null,
           vehicleModel: vehicleModel.trim(),
-          vehicleRegNo: vehicleRegNumber.toUpperCase().trim(),
+          vehicleRegNo: regNo,
           purchaseDate: saleDateObj,
           lastServiceDate: new Date(),
         },
@@ -179,14 +185,14 @@ export async function POST(req: NextRequest) {
           address: customerAddress?.trim() || customer.address,
           email: customerEmail?.trim() || customer.email,
           vehicleModel: customer.vehicleModel || vehicleModel.trim(),
-          vehicleRegNo: customer.vehicleRegNo || vehicleRegNumber.toUpperCase().trim(),
+          vehicleRegNo: regNo !== 'NEW VEHICLE' ? regNo : customer.vehicleRegNo,
           purchaseDate: customer.purchaseDate || saleDateObj,
           lastServiceDate: new Date(),
         },
       });
     }
 
-    // Unique Job Card Number generation (sequential 4-digit matching physical pad)
+    // Unique Job Card Number generation (sequential from configured start or physical pad)
     let jobCardNumber = '';
     if (customJobCardNumber && customJobCardNumber.trim()) {
       const trimmed = customJobCardNumber.trim().toUpperCase();
@@ -197,15 +203,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (!jobCardNumber) {
-      const count = await prisma.serviceJobCard.count();
-      const seq = 816 + count;
-      jobCardNumber = String(seq).padStart(4, '0');
-
-      // Check collision
-      const checkColl = await prisma.serviceJobCard.findUnique({ where: { jobCardNumber } });
-      if (checkColl) {
-        jobCardNumber = `JC-${Date.now().toString().slice(-4)}`;
-      }
+      jobCardNumber = await getNextJobCardSerial();
     }
 
     // Calculate estimates from workItems or body
@@ -221,9 +219,11 @@ export async function POST(req: NextRequest) {
       computedParts = Number(body.partsTotal || 0);
     }
 
+    // GST vs Non-GST billing calculation (default is Non-GST)
+    const isGstBill = Boolean(body.isGstBill);
     const discountAmount = Number(body.discount || 0);
     const subTotal = Math.max(0, computedLabour + computedParts - discountAmount);
-    const taxAmount = Math.round(subTotal * 0.18);
+    const taxAmount = isGstBill ? Math.round(subTotal * 0.18) : 0;
     const finalTotal = subTotal + taxAmount;
     const estimateAmount = Number(body.estimateAmount) || finalTotal;
 
@@ -369,7 +369,8 @@ export async function PUT(req: NextRequest) {
       updatePayload.advisorId = data.advisorId || null;
     }
 
-    // Recalculate totals if provided
+    // Recalculate totals if provided (support GST vs Non-GST)
+    const isGst = data.isGstBill !== undefined ? Boolean(data.isGstBill) : existing.tax > 0;
     if (data.workItems && Array.isArray(data.workItems)) {
       let lTot = 0;
       let pTot = 0;
@@ -379,7 +380,7 @@ export async function PUT(req: NextRequest) {
       }
       const disc = data.discount !== undefined ? Number(data.discount) : existing.discount;
       const subTotal = Math.max(0, lTot + pTot - disc);
-      const tax = Math.round(subTotal * 0.18);
+      const tax = isGst ? Math.round(subTotal * 0.18) : 0;
       const finalTot = subTotal + tax;
 
       updatePayload.labourTotal = lTot;
@@ -388,12 +389,12 @@ export async function PUT(req: NextRequest) {
       updatePayload.tax = tax;
       updatePayload.finalTotal = finalTot;
       updatePayload.estimateAmount = finalTot;
-    } else if (data.partsTotal !== undefined || data.labourTotal !== undefined || data.discount !== undefined) {
+    } else if (data.partsTotal !== undefined || data.labourTotal !== undefined || data.discount !== undefined || data.isGstBill !== undefined) {
       const pTot = data.partsTotal !== undefined ? Number(data.partsTotal) : existing.partsTotal;
       const lTot = data.labourTotal !== undefined ? Number(data.labourTotal) : existing.labourTotal;
       const disc = data.discount !== undefined ? Number(data.discount) : existing.discount;
       const subTotal = Math.max(0, pTot + lTot - disc);
-      const tax = Math.round(subTotal * 0.18);
+      const tax = isGst ? Math.round(subTotal * 0.18) : 0;
       const finalTot = subTotal + tax;
 
       updatePayload.partsTotal = pTot;

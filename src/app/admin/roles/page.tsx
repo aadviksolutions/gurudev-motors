@@ -202,7 +202,7 @@ export default function AdminRolesPage() {
         </div>
 
         {/* Roles Pill Switcher */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-2">
+        <div className="flex items-center gap-2 overflow-x-auto overscroll-x-contain touch-pan-x pb-2 no-scrollbar">
           {roles.map((r) => (
             <button
               key={r.id}
